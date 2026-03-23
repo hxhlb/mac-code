@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+picoclaw/
+*.gguf
+.DS_Store

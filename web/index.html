@@ -4,336 +4,357 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>mac code</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Chicago&display=swap');
-
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-
-  :root {
-    --beige: #f5e6c8;
-    --beige-dark: #e8d5a8;
-    --beige-shadow: #c4a66a;
-    --screen-bg: #1a1a2e;
-    --screen-green: #33ff33;
-    --screen-cyan: #00ffff;
-    --screen-yellow: #ffcc00;
-    --screen-dim: #448844;
-    --screen-white: #e0e0e0;
-    --menu-bg: #ffffff;
-    --menu-border: #000000;
-  }
+  * { margin:0; padding:0; box-sizing:border-box; }
 
   body {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(180deg, #2c2c3a 0%, #1a1a28 100%);
     min-height: 100vh;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-family: "Chicago", "Monaco", "Courier New", monospace;
-    overflow: hidden;
+    font-family: "VT323", "Monaco", "Courier New", monospace;
   }
 
-  /* ── The Macintosh ── */
+  /* ── Classic Macintosh Case ── */
+  .mac-container { perspective: 800px; }
+
   .mac {
+    width: 440px;
+    transform: rotateX(1deg);
     position: relative;
-    width: 520px;
   }
 
-  .mac-body {
-    background: var(--beige);
-    border-radius: 18px 18px 4px 4px;
-    padding: 22px 22px 14px 22px;
+  /* Main body */
+  .mac-top {
+    background: linear-gradient(180deg, #f2e6cc 0%, #e8d8b8 40%, #dcc8a0 100%);
+    border-radius: 16px 16px 2px 2px;
+    padding: 16px 18px 10px 18px;
+    position: relative;
     box-shadow:
-      0 8px 0 var(--beige-shadow),
-      0 12px 30px rgba(0,0,0,0.5),
-      inset 0 1px 0 rgba(255,255,255,0.4);
-    position: relative;
+      inset 0 1px 0 rgba(255,255,255,0.5),
+      inset -2px 0 0 rgba(0,0,0,0.04),
+      inset 2px 0 0 rgba(255,255,255,0.15),
+      0 0 0 1px rgba(0,0,0,0.1);
   }
 
-  .mac-body::before {
-    content: '';
-    position: absolute;
-    top: 6px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 60px;
-    height: 4px;
-    background: var(--beige-dark);
-    border-radius: 2px;
+  /* Top vent lines */
+  .mac-vents {
+    display: flex;
+    justify-content: center;
+    gap: 3px;
+    margin-bottom: 10px;
+  }
+  .mac-vent {
+    width: 30px;
+    height: 2px;
+    background: #c4a878;
+    border-radius: 1px;
+    box-shadow: inset 0 1px 0 rgba(0,0,0,0.15);
   }
 
-  /* ── Screen bezel ── */
+  /* Screen bezel — deep inset */
   .screen-bezel {
-    background: #111;
-    border-radius: 12px;
-    padding: 8px;
+    background: linear-gradient(180deg, #1a1a1a 0%, #0a0a0a 100%);
+    border-radius: 10px;
+    padding: 10px;
     box-shadow:
-      inset 0 2px 8px rgba(0,0,0,0.8),
+      inset 0 2px 6px rgba(0,0,0,0.9),
+      inset 0 -1px 0 rgba(255,255,255,0.05),
       0 1px 0 rgba(255,255,255,0.1);
   }
 
-  /* ── CRT Screen ── */
+  /* CRT Screen */
   .screen {
-    background: var(--screen-bg);
-    border-radius: 8px;
-    height: 380px;
+    background: radial-gradient(ellipse at center, #0a1a0a 0%, #050f05 60%, #020802 100%);
+    border-radius: 6px;
+    height: 340px;
     overflow: hidden;
     position: relative;
     display: flex;
     flex-direction: column;
+    box-shadow:
+      inset 0 0 40px rgba(0,255,0,0.03),
+      inset 0 0 80px rgba(0,0,0,0.3);
   }
 
-  /* CRT scanline effect */
+  /* CRT curvature */
   .screen::after {
     content: '';
     position: absolute;
     top: 0; left: 0; right: 0; bottom: 0;
-    background: repeating-linear-gradient(
-      0deg,
-      transparent,
-      transparent 2px,
-      rgba(0,0,0,0.08) 2px,
-      rgba(0,0,0,0.08) 4px
-    );
+    background:
+      repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 1px,
+        rgba(0,0,0,0.06) 1px,
+        rgba(0,0,0,0.06) 2px
+      );
     pointer-events: none;
     z-index: 10;
+    border-radius: 6px;
   }
 
-  /* CRT glow */
+  /* Screen glow */
   .screen::before {
     content: '';
     position: absolute;
-    top: -2px; left: -2px; right: -2px; bottom: -2px;
-    background: radial-gradient(ellipse at center, rgba(51,255,51,0.03) 0%, transparent 70%);
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: radial-gradient(ellipse at 50% 50%,
+      rgba(51,255,51,0.04) 0%,
+      rgba(51,255,51,0.02) 40%,
+      transparent 70%
+    );
     pointer-events: none;
     z-index: 11;
   }
 
-  /* ── Menu bar ── */
+  /* Vignette */
+  .screen-vignette {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: radial-gradient(ellipse at center,
+      transparent 60%,
+      rgba(0,0,0,0.4) 100%
+    );
+    pointer-events: none;
+    z-index: 12;
+    border-radius: 6px;
+  }
+
+  /* ── System menu bar ── */
   .menu-bar {
-    background: var(--menu-bg);
-    border-bottom: 1px solid #000;
-    padding: 2px 8px;
+    background: #fff;
+    border-bottom: 2px solid #000;
+    padding: 1px 8px;
     display: flex;
     align-items: center;
-    gap: 14px;
-    font-size: 11px;
-    height: 20px;
+    gap: 12px;
+    font-size: 12px;
+    height: 18px;
     flex-shrink: 0;
+    font-family: "Chicago", "Geneva", sans-serif;
+    image-rendering: pixelated;
   }
 
-  .menu-apple {
-    font-size: 14px;
-    cursor: pointer;
-  }
+  .menu-apple { font-size: 13px; cursor: pointer; font-weight: bold; }
+  .menu-item { cursor: pointer; font-weight: bold; font-size: 12px; }
+  .menu-item:hover { background: #000; color: #fff; padding: 0 4px; margin: 0 -4px; }
+  .menu-right { margin-left: auto; font-size: 10px; }
 
-  .menu-item {
-    cursor: pointer;
-    font-weight: bold;
-    font-size: 11px;
-  }
-
-  .menu-item:hover { text-decoration: underline; }
-
-  .menu-right {
-    margin-left: auto;
-    font-size: 10px;
-    color: #555;
-  }
-
-  /* ── Terminal area ── */
+  /* ── Terminal ── */
   .terminal {
     flex: 1;
-    padding: 10px 12px;
+    padding: 8px 10px;
     overflow-y: auto;
-    font-size: 13px;
-    line-height: 1.5;
-    color: var(--screen-green);
+    font-size: 14px;
+    line-height: 1.4;
+    color: #33ff33;
     scrollbar-width: none;
+    position: relative;
+    z-index: 5;
   }
-
   .terminal::-webkit-scrollbar { display: none; }
 
-  .line { margin-bottom: 2px; white-space: pre-wrap; word-wrap: break-word; }
-  .line-cyan { color: var(--screen-cyan); }
-  .line-yellow { color: var(--screen-yellow); }
-  .line-dim { color: var(--screen-dim); }
-  .line-white { color: var(--screen-white); }
+  .line { margin-bottom: 1px; white-space: pre-wrap; word-wrap: break-word; }
+  .line-cyan { color: #00dddd; }
+  .line-yellow { color: #ffcc00; }
+  .line-dim { color: #227722; }
+  .line-white { color: #ccddcc; }
   .line-bold { font-weight: bold; }
-  .line-error { color: #ff4444; }
+  .line-error { color: #ff3333; }
 
-  /* ── Input line ── */
+  /* Input */
   .input-area {
-    padding: 4px 12px 8px 12px;
+    padding: 3px 10px 6px 10px;
     display: flex;
     align-items: center;
     flex-shrink: 0;
+    z-index: 5;
+    position: relative;
   }
 
-  .prompt {
-    color: var(--screen-dim);
-    font-size: 13px;
-    margin-right: 4px;
-    white-space: nowrap;
-  }
-
-  .prompt-arrow {
-    color: var(--screen-yellow);
-    font-weight: bold;
-    margin-right: 6px;
-  }
+  .prompt { color: #227722; font-size: 14px; margin-right: 3px; }
+  .prompt-arrow { color: #ffcc00; font-weight: bold; margin-right: 5px; }
 
   #input {
     background: transparent;
     border: none;
-    color: var(--screen-green);
+    color: #33ff33;
     font-family: inherit;
-    font-size: 13px;
+    font-size: 14px;
     flex: 1;
     outline: none;
-    caret-color: var(--screen-green);
+    caret-color: #33ff33;
   }
 
-  .cursor-blink {
-    display: inline-block;
-    width: 8px;
-    height: 14px;
-    background: var(--screen-green);
-    animation: blink 1s step-end infinite;
-    vertical-align: middle;
-    margin-left: 2px;
-  }
-
-  @keyframes blink {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0; }
-  }
-
-  /* ── Slash menu ── */
+  /* Slash menu */
   .slash-menu {
     display: none;
-    padding: 4px 12px;
-    max-height: 140px;
+    padding: 3px 10px;
+    max-height: 120px;
     overflow-y: auto;
-    scrollbar-width: none;
+    z-index: 5;
+    position: relative;
   }
-
-  .slash-menu::-webkit-scrollbar { display: none; }
-
   .slash-menu.visible { display: block; }
+  .slash-menu::-webkit-scrollbar { display: none; }
+  .slash-item { padding: 1px 0; font-size: 13px; cursor: pointer; display: flex; }
+  .slash-item:hover { background: rgba(51,255,51,0.08); }
+  .slash-cmd { color: #00dddd; font-weight: bold; width: 100px; flex-shrink: 0; }
+  .slash-desc { color: #227722; }
 
-  .slash-item {
-    padding: 2px 0;
-    font-size: 12px;
-    cursor: pointer;
-    display: flex;
-  }
-
-  .slash-item:hover { background: rgba(51,255,51,0.1); }
-
-  .slash-cmd {
-    color: var(--screen-cyan);
-    font-weight: bold;
-    width: 110px;
-    flex-shrink: 0;
-  }
-
-  .slash-desc { color: var(--screen-dim); }
-
-  /* ── Mac base ── */
-  .mac-base {
-    background: var(--beige);
-    height: 28px;
-    border-radius: 0 0 18px 18px;
+  /* ── Bottom section of case ── */
+  .mac-chin {
+    background: linear-gradient(180deg, #e0cca8 0%, #d8c098 50%, #ccb488 100%);
+    height: 80px;
+    border-radius: 0 0 2px 2px;
+    position: relative;
     box-shadow:
-      0 4px 0 var(--beige-shadow),
-      0 8px 20px rgba(0,0,0,0.3);
-    display: flex;
-    align-items: center;
-    justify-content: center;
+      inset 0 1px 0 rgba(255,255,255,0.2),
+      inset 0 -1px 0 rgba(0,0,0,0.05),
+      0 0 0 1px rgba(0,0,0,0.1);
   }
 
-  .mac-label {
-    font-size: 10px;
-    color: var(--beige-shadow);
-    letter-spacing: 3px;
-    text-transform: uppercase;
+  /* Apple rainbow logo */
+  .apple-logo {
+    position: absolute;
+    left: 50%;
+    top: 12px;
+    transform: translateX(-50%);
+    font-size: 20px;
+    opacity: 0.5;
   }
 
-  /* ── Floppy slot ── */
+  /* Floppy slot */
   .floppy-slot {
     position: absolute;
-    right: 22px;
-    bottom: 42px;
-    width: 80px;
-    height: 6px;
-    background: #333;
+    right: 28px;
+    top: 28px;
+    width: 62px;
+    height: 4px;
+    background: linear-gradient(180deg, #333 0%, #555 100%);
     border-radius: 1px;
-    box-shadow: inset 0 1px 2px rgba(0,0,0,0.5);
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.5), 0 1px 0 rgba(255,255,255,0.15);
+  }
+
+  /* Model name emboss */
+  .mac-model {
+    position: absolute;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: #b09868;
+    text-transform: uppercase;
+    text-shadow: 0 1px 0 rgba(255,255,255,0.3);
+  }
+
+  /* ── Base/foot ── */
+  .mac-base {
+    background: linear-gradient(180deg, #d0bc98 0%, #c4b088 50%, #b8a478 100%);
+    height: 14px;
+    margin: 0 10px;
+    border-radius: 0 0 8px 8px;
+    box-shadow:
+      0 4px 12px rgba(0,0,0,0.3),
+      0 8px 24px rgba(0,0,0,0.2);
+  }
+
+  /* Shadow under Mac */
+  .mac-shadow {
+    width: 380px;
+    height: 20px;
+    margin: 0 auto;
+    background: radial-gradient(ellipse at center, rgba(0,0,0,0.35) 0%, transparent 70%);
+    margin-top: -4px;
   }
 
   /* ── Loading dots ── */
   .loading-dots span {
-    animation: loadDot 1.4s infinite;
-    animation-fill-mode: both;
+    animation: loadDot 1.4s infinite both;
   }
   .loading-dots span:nth-child(2) { animation-delay: 0.2s; }
   .loading-dots span:nth-child(3) { animation-delay: 0.4s; }
-
   @keyframes loadDot {
     0%, 80%, 100% { opacity: 0.2; }
     40% { opacity: 1; }
   }
 
-  /* ── Typing animation ── */
-  @keyframes typewriter {
-    from { width: 0; }
-    to { width: 100%; }
+  /* ── Power LED ── */
+  .power-led {
+    position: absolute;
+    left: 28px;
+    top: 32px;
+    width: 6px;
+    height: 6px;
+    background: #44bb44;
+    border-radius: 50%;
+    box-shadow: 0 0 4px rgba(68,187,68,0.6), 0 0 8px rgba(68,187,68,0.3);
+    animation: ledPulse 3s ease-in-out infinite;
+  }
+  @keyframes ledPulse {
+    0%, 100% { opacity: 0.8; }
+    50% { opacity: 1; }
   }
 
   /* ── Responsive ── */
-  @media (max-width: 560px) {
+  @media (max-width: 480px) {
     .mac { width: 95vw; }
-    .screen { height: 320px; }
-    .terminal { font-size: 11px; }
+    .screen { height: 280px; }
+    .terminal { font-size: 12px; }
+    .mac-chin { height: 60px; }
   }
 </style>
 </head>
 <body>
 
+<div class="mac-container">
 <div class="mac">
-  <div class="mac-body">
+  <div class="mac-top">
+    <div class="mac-vents">
+      <div class="mac-vent"></div>
+      <div class="mac-vent"></div>
+      <div class="mac-vent"></div>
+      <div class="mac-vent"></div>
+      <div class="mac-vent"></div>
+      <div class="mac-vent"></div>
+      <div class="mac-vent"></div>
+    </div>
     <div class="screen-bezel">
       <div class="screen">
-        <!-- Menu bar -->
+        <div class="screen-vignette"></div>
         <div class="menu-bar">
           <span class="menu-apple">&#63743;</span>
           <span class="menu-item">File</span>
           <span class="menu-item">Edit</span>
           <span class="menu-item">View</span>
           <span class="menu-item">Help</span>
-          <span class="menu-right" id="clock">12:00 PM</span>
+          <span class="menu-right" id="clock"></span>
         </div>
-
-        <!-- Terminal output -->
         <div class="terminal" id="terminal"></div>
-
-        <!-- Slash command menu -->
         <div class="slash-menu" id="slashMenu"></div>
-
-        <!-- Input -->
         <div class="input-area">
-          <span class="prompt">auto 9b</span>
+          <span class="prompt" id="promptTag">auto 9b</span>
           <span class="prompt-arrow">></span>
-          <input type="text" id="input" autocomplete="off" spellcheck="false" autofocus placeholder="">
+          <input type="text" id="input" autocomplete="off" spellcheck="false" autofocus>
         </div>
       </div>
     </div>
+  </div>
+  <div class="mac-chin">
+    <div class="power-led"></div>
+    <span class="apple-logo">&#63743;</span>
     <div class="floppy-slot"></div>
+    <div class="mac-model">mac code</div>
   </div>
-  <div class="mac-base">
-    <span class="mac-label">mac code</span>
-  </div>
+  <div class="mac-base"></div>
+  <div class="mac-shadow"></div>
+</div>
 </div>
 
 <script>
@@ -341,438 +362,223 @@ const terminal = document.getElementById('terminal');
 const input = document.getElementById('input');
 const slashMenu = document.getElementById('slashMenu');
 const clock = document.getElementById('clock');
+const promptTag = document.getElementById('promptTag');
 
-// Update clock
-function updateClock() {
-  const now = new Date();
-  clock.textContent = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-}
-updateClock();
-setInterval(updateClock, 60000);
-
-// Slash commands
-const COMMANDS = [
-  ["/agent",   "Switch to agent mode (tools + web search)"],
-  ["/raw",     "Switch to raw mode (direct streaming)"],
-  ["/model",   "Show or switch model — /model 9b or 35b"],
-  ["/auto",    "Toggle smart auto-routing between models"],
-  ["/search",  "Quick web search — /search <query>"],
-  ["/btw",     "Side question without context"],
-  ["/bench",   "Run speed benchmark"],
-  ["/branch",  "Save conversation checkpoint"],
-  ["/restore", "Restore checkpoint"],
-  ["/stats",   "Session statistics"],
-  ["/tools",   "List available tools"],
-  ["/clear",   "Clear conversation"],
-  ["/cost",    "Show cost savings vs cloud"],
-  ["/compact", "Toggle markdown rendering"],
-  ["/quit",    "Exit mac code"],
-];
+const LLM_URL = 'http://localhost:8000/v1/chat/completions';
 
 // State
-let history = [];
-let historyIdx = -1;
+let chatHistory = [];
+let cmdHistory = [];
+let cmdIdx = -1;
 let sessionTurns = 0;
 let sessionTokens = 0;
-let currentModel = "9b";
+let currentModel = '9b';
 let autoRoute = true;
 
-// LLM API
-const LLM_URL = 'http://localhost:8000/v1/chat/completions';
-let chatHistory = [];
+// Clock
+function updateClock() {
+  clock.textContent = new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',hour12:true});
+}
+updateClock(); setInterval(updateClock, 60000);
 
-async function streamFromLLM(messages) {
-  const res = await fetch(LLM_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model: 'local',
-      messages: messages,
-      max_tokens: 2000,
-      temperature: 0.7,
-      stream: true,
-    }),
-  });
+// Commands
+const CMDS = [
+  ["/model","/stats","/tools","/bench","/cost","/clear","/auto","/quit"],
+];
+const SLASH = [
+  ["/agent","Agent mode (tools + web search)"],
+  ["/raw","Raw mode (direct streaming)"],
+  ["/model","Show/switch model — /model 9b or 35b"],
+  ["/auto","Toggle auto-routing"],
+  ["/bench","Speed benchmark"],
+  ["/search","Web search — /search <query>"],
+  ["/stats","Session stats"],
+  ["/tools","List tools"],
+  ["/cost","Cost savings"],
+  ["/clear","Clear screen"],
+  ["/compact","Toggle markdown"],
+  ["/quit","Exit"],
+];
 
-  if (!res.ok) {
-    throw new Error(`Server error: ${res.status}`);
-  }
+function addLine(t,c=''){const d=document.createElement('div');d.className=`line ${c}`;d.textContent=t;terminal.appendChild(d);terminal.scrollTop=terminal.scrollHeight;}
+function addHTML(h){const d=document.createElement('div');d.className='line';d.innerHTML=h;terminal.appendChild(d);terminal.scrollTop=terminal.scrollHeight;}
 
+function showLoading(){
+  const d=document.createElement('div');d.className='line line-cyan';d.id='loading';
+  terminal.appendChild(d);terminal.scrollTop=terminal.scrollHeight;
+  let f=0;const dots=['⠋','⠙','⠹','⠸','⠼','⠴','⠦','⠧','⠇','⠏'];
+  const iv=setInterval(()=>{f++;const el=document.getElementById('loading');
+    if(!el){clearInterval(iv);return;}
+    const s=Math.floor(f*0.15);
+    el.innerHTML=`  ${dots[f%dots.length]} thinking  ${s}s`;
+  },150);
+  return iv;
+}
+function hideLoading(iv){clearInterval(iv);const el=document.getElementById('loading');if(el)el.remove();}
+
+function showSlash(filter='/'){
+  const m=filter==='/'?SLASH:SLASH.filter(([c])=>c.startsWith(filter));
+  if(!m.length){slashMenu.classList.remove('visible');return;}
+  slashMenu.innerHTML=m.map(([c,d])=>`<div class="slash-item" data-cmd="${c}"><span class="slash-cmd">${c}</span><span class="slash-desc">${d}</span></div>`).join('');
+  slashMenu.classList.add('visible');
+  slashMenu.querySelectorAll('.slash-item').forEach(el=>el.onclick=()=>{input.value=el.dataset.cmd+' ';slashMenu.classList.remove('visible');input.focus();});
+}
+
+async function streamLLM(messages){
+  const res=await fetch(LLM_URL,{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({model:'local',messages,max_tokens:2000,temperature:0.7,stream:true})});
+  if(!res.ok)throw new Error(`Server ${res.status}`);
   return res.body.getReader();
 }
 
-async function nonStreamFromLLM(messages) {
-  const res = await fetch(LLM_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model: 'local',
-      messages: messages,
-      max_tokens: 2000,
-      temperature: 0.7,
-    }),
-  });
+async function askLLM(messages){
+  const res=await fetch(LLM_URL,{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({model:'local',messages,max_tokens:2000,temperature:0.7})});
   return await res.json();
 }
 
-function addLine(text, cls = '') {
-  const div = document.createElement('div');
-  div.className = `line ${cls}`;
-  div.textContent = text;
-  terminal.appendChild(div);
-  terminal.scrollTop = terminal.scrollHeight;
-}
+async function handleInput(text){
+  const lo=text.toLowerCase().trim();
 
-function addHTML(html) {
-  const div = document.createElement('div');
-  div.className = 'line';
-  div.innerHTML = html;
-  terminal.appendChild(div);
-  terminal.scrollTop = terminal.scrollHeight;
-}
-
-async function typeText(text, cls = '', delay = 20) {
-  const div = document.createElement('div');
-  div.className = `line ${cls}`;
-  terminal.appendChild(div);
-  for (let i = 0; i < text.length; i++) {
-    div.textContent += text[i];
-    terminal.scrollTop = terminal.scrollHeight;
-    await new Promise(r => setTimeout(r, delay));
+  if(lo==='/'){showSlash('/');return;}
+  if(lo==='/clear'){terminal.innerHTML='';showBanner();return;}
+  if(lo==='/stats'){
+    addLine(`  turns   ${sessionTurns}`,'line-cyan');
+    addLine(`  tokens  ${sessionTokens.toLocaleString()}`,'line-cyan');
+    addLine(`  model   ${currentModel==='9b'?'Qwen3.5-9B':'Qwen3.5-35B-A3B'}`,'line-cyan');
+    addLine('');return;
   }
-}
-
-function showLoading() {
-  const div = document.createElement('div');
-  div.className = 'line line-cyan';
-  div.id = 'loading';
-  div.innerHTML = '  <span class="loading-dots"><span>⠋</span> thinking</span>';
-  terminal.appendChild(div);
-  terminal.scrollTop = terminal.scrollHeight;
-
-  let frame = 0;
-  const dots = ['⠋','⠙','⠹','⠸','⠼','⠴','⠦','⠧','⠇','⠏'];
-  const interval = setInterval(() => {
-    frame++;
-    const el = document.getElementById('loading');
-    if (!el) { clearInterval(interval); return; }
-    const phases = ['thinking', 'searching', 'reasoning', 'generating'];
-    const phase = phases[Math.floor(frame / 8) % phases.length];
-    el.innerHTML = `  <span class="loading-dots"><span>${dots[frame % dots.length]}</span> ${phase}  ${frame}s</span>`;
-  }, 150);
-
-  return interval;
-}
-
-function hideLoading(interval) {
-  clearInterval(interval);
-  const el = document.getElementById('loading');
-  if (el) el.remove();
-}
-
-function showSlashMenu(filter = '') {
-  const matches = filter === '/'
-    ? COMMANDS
-    : COMMANDS.filter(([cmd]) => cmd.startsWith(filter));
-
-  if (matches.length === 0) {
-    slashMenu.classList.remove('visible');
-    return;
+  if(lo==='/tools'){
+    [['web_search','DuckDuckGo'],['web_fetch','URLs'],['exec','shell'],['read_file','files'],['write_file','create']].forEach(([n,d])=>addHTML(`  <span style="color:#00dddd">▸ ${n}</span> <span style="color:#227722">${d}</span>`));
+    addLine('');return;
   }
-
-  slashMenu.innerHTML = matches.map(([cmd, desc]) =>
-    `<div class="slash-item" data-cmd="${cmd}">
-      <span class="slash-cmd">${cmd}</span>
-      <span class="slash-desc">${desc}</span>
-    </div>`
-  ).join('');
-
-  slashMenu.classList.add('visible');
-
-  // Click handler
-  slashMenu.querySelectorAll('.slash-item').forEach(el => {
-    el.addEventListener('click', () => {
-      input.value = el.dataset.cmd + ' ';
-      slashMenu.classList.remove('visible');
-      input.focus();
-    });
-  });
-}
-
-async function handleCommand(text) {
-  const lower = text.toLowerCase().trim();
-
-  // Slash commands
-  if (lower === '/') {
-    showSlashMenu('/');
-    return;
+  if(lo==='/bench'){
+    addLine('  benchmarking...','line-dim');
+    try{
+      const d=await askLLM([{role:'user',content:'Count 1 to 30'}]);
+      const t=d.timings||{};
+      addHTML(`  <span style="color:#33ff33;font-weight:bold">${(t.predicted_per_second||0).toFixed(1)} tok/s</span> gen`);
+      addHTML(`  <span style="color:#33ff33">${(t.prompt_per_second||0).toFixed(1)} tok/s</span> prompt`);
+    }catch(e){addLine(`  error: ${e.message}`,'line-error');}
+    addLine('');return;
   }
+  if(lo==='/cost'){addHTML(`  <span style="color:#33ff33;font-weight:bold">$0.00</span> spent`);addLine('  ~$0.34/hr on cloud GPU','line-dim');addLine('');return;}
+  if(lo==='/auto'){autoRoute=!autoRoute;addLine(`  auto-routing ${autoRoute?'on':'off'}`,'line-dim');addLine('');return;}
+  if(lo==='/model'){addLine(`  ${currentModel==='9b'?'Qwen3.5-9B (32K ctx)':'Qwen3.5-35B-A3B (8K ctx)'}`,'line-white line-bold');addLine('');return;}
+  if(lo==='/quit'){addLine(`\n  mac code  ${sessionTurns} turns · ${sessionTokens} tokens`,'line-yellow');addLine('\n  Goodbye!','line-dim');input.disabled=true;return;}
 
-  if (lower === '/clear') {
-    terminal.innerHTML = '';
-    showBanner();
-    return;
-  }
-
-  if (lower === '/stats') {
-    addLine(`  turns     ${sessionTurns}`, 'line-cyan');
-    addLine(`  tokens    ${sessionTokens.toLocaleString()}`, 'line-cyan');
-    addLine(`  model     ${currentModel === '9b' ? 'Qwen3.5-9B' : 'Qwen3.5-35B-A3B'}`, 'line-cyan');
-    addLine(`  auto      ${autoRoute ? 'on' : 'off'}`, 'line-cyan');
-    addLine('');
-    return;
-  }
-
-  if (lower === '/model') {
-    addLine(`  Qwen3.5-${currentModel === '9b' ? '9B' : '35B-A3B'}`, 'line-white line-bold');
-    addLine(`  switch: /model 9b  or  /model 35b`, 'line-dim');
-    addLine('');
-    return;
-  }
-
-  if (lower === '/model 9b' || lower === '/model 35b') {
-    const target = lower.includes('9b') ? '9b' : '35b';
-    currentModel = target;
-    const interval = showLoading();
-    await new Promise(r => setTimeout(r, 1500));
-    hideLoading(interval);
-    addLine(`  Switched to ${target === '9b' ? 'Qwen3.5-9B (32K ctx)' : 'Qwen3.5-35B-A3B (8K ctx)'}`, 'line-cyan');
-    addLine('');
-    return;
-  }
-
-  if (lower === '/auto') {
-    autoRoute = !autoRoute;
-    addLine(`  smart auto-routing ${autoRoute ? 'on' : 'off'}`, 'line-dim');
-    if (autoRoute) {
-      addLine(`    tools/search → 9B (32K ctx, reliable)`, 'line-dim');
-      addLine(`    reasoning    → 35B (faster, smarter)`, 'line-dim');
-    }
-    addLine('');
-    return;
-  }
-
-  if (lower === '/tools') {
-    const tools = [
-      ['web_search', 'DuckDuckGo'],
-      ['web_fetch', 'read URLs'],
-      ['exec', 'shell commands'],
-      ['read_file', 'local files'],
-      ['write_file', 'create files'],
-    ];
-    tools.forEach(([name, desc]) => {
-      addHTML(`  <span style="color:var(--screen-cyan)">▸ ${name}</span>  <span style="color:var(--screen-dim)">${desc}</span>`);
-    });
-    addLine('');
-    return;
-  }
-
-  if (lower === '/bench') {
-    addLine('  running benchmark...', 'line-dim');
-    try {
-      const d = await nonStreamFromLLM([{role:'user', content:'Count from 1 to 30, one per line.'}]);
-      const t = d.timings || {};
-      const u = d.usage || {};
-      addHTML(`  <span style="color:#33ff33;font-weight:bold">${(t.predicted_per_second||0).toFixed(1)} tok/s</span> generation`);
-      addHTML(`  <span style="color:#33ff33;font-weight:bold">${(t.prompt_per_second||0).toFixed(1)} tok/s</span> prompt`);
-      addLine(`  ${u.completion_tokens||0} tokens in ${((t.predicted_ms||0)/1000).toFixed(1)}s`, 'line-dim');
-    } catch(e) {
-      addLine(`  benchmark failed: ${e.message}`, 'line-error');
-      addLine('  is llama-server running on localhost:8000?', 'line-dim');
-    }
-    addLine('');
-    return;
-  }
-
-  if (lower === '/cost') {
-    addHTML(`  <span style="color:#33ff33;font-weight:bold">$0.00</span> spent locally`);
-    addLine(`  ~$0.34/hr would cost on cloud GPU`, 'line-dim');
-    addLine('');
-    return;
-  }
-
-  if (lower === '/quit') {
-    addLine('');
-    addLine(`  mac code  ${sessionTurns} turns · ${sessionTokens} tokens`, 'line-yellow');
-    addLine('');
-    addLine('  Goodbye!', 'line-dim');
-    input.disabled = true;
-    return;
-  }
-
-  // ── Real LLM chat with streaming ──
+  // ── Stream from real LLM ──
   slashMenu.classList.remove('visible');
+  chatHistory.push({role:'user',content:text});
 
-  chatHistory.push({ role: 'user', content: text });
+  const iv=showLoading();
+  const t0=performance.now();
+  let full='',tokens=0;
 
-  const interval = showLoading();
-  const startTime = performance.now();
-  let fullResponse = '';
-  let tokenCount = 0;
+  try{
+    const reader=await streamLLM(chatHistory);
+    hideLoading(iv);
 
-  try {
-    const reader = await streamFromLLM(chatHistory);
-    hideLoading(interval);
+    const div=document.createElement('div');
+    div.className='line line-white';
+    div.textContent='  ';
+    terminal.appendChild(div);
 
-    // Create response div
-    const responseDiv = document.createElement('div');
-    responseDiv.className = 'line line-white';
-    responseDiv.textContent = '  ';
-    terminal.appendChild(responseDiv);
+    const dec=new TextDecoder();
+    let buf='';
 
-    const decoder = new TextDecoder();
-    let buffer = '';
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-
-      buffer += decoder.decode(value, { stream: true });
-
-      while (buffer.includes('\n')) {
-        const [line, rest] = [buffer.slice(0, buffer.indexOf('\n')), buffer.slice(buffer.indexOf('\n') + 1)];
-        buffer = rest;
-
-        const trimmed = line.trim();
-        if (!trimmed || !trimmed.startsWith('data: ')) continue;
-        const data = trimmed.slice(6);
-        if (data === '[DONE]') break;
-
-        try {
-          const obj = JSON.parse(data);
-          const content = obj.choices?.[0]?.delta?.content || '';
-          if (content) {
-            fullResponse += content;
-            tokenCount++;
-            responseDiv.textContent += content;
-            terminal.scrollTop = terminal.scrollHeight;
-          }
-        } catch(e) {}
+    while(true){
+      const{done,value}=await reader.read();
+      if(done)break;
+      buf+=dec.decode(value,{stream:true});
+      while(buf.includes('\n')){
+        const i=buf.indexOf('\n');
+        const line=buf.slice(0,i).trim();
+        buf=buf.slice(i+1);
+        if(!line.startsWith('data: '))continue;
+        const data=line.slice(6);
+        if(data==='[DONE]')break;
+        try{
+          const c=JSON.parse(data).choices?.[0]?.delta?.content||'';
+          if(c){full+=c;tokens++;div.textContent+=c;terminal.scrollTop=terminal.scrollHeight;}
+        }catch(e){}
       }
     }
 
-    const elapsed = ((performance.now() - startTime) / 1000).toFixed(1);
-    const speed = tokenCount > 0 ? (tokenCount / parseFloat(elapsed)).toFixed(1) : '0.0';
-
+    const elapsed=((performance.now()-t0)/1000).toFixed(1);
+    const speed=tokens>0?(tokens/parseFloat(elapsed)).toFixed(1):'0';
     addLine('');
-    addHTML(`  <span style="color:#33ff33">${speed} tok/s</span>  <span style="color:var(--screen-dim)">·  ${tokenCount} tokens  ·  ${elapsed}s</span>`);
+    addHTML(`  <span style="color:#33ff33">${speed} tok/s</span>  <span style="color:#227722">·  ${tokens} tokens  ·  ${elapsed}s</span>`);
+    chatHistory.push({role:'assistant',content:full});
+    sessionTurns++;sessionTokens+=tokens;
 
-    chatHistory.push({ role: 'assistant', content: fullResponse });
-    sessionTurns++;
-    sessionTokens += tokenCount;
-
-  } catch(e) {
-    hideLoading(interval);
-    addLine('');
-    addLine(`  error: ${e.message}`, 'line-error');
-    addLine('  is llama-server running on localhost:8000?', 'line-dim');
-    chatHistory.pop(); // remove failed user message
+  }catch(e){
+    hideLoading(iv);
+    addLine(`\n  error: ${e.message}`,'line-error');
+    addLine('  is llama-server running on localhost:8000?','line-dim');
+    chatHistory.pop();
   }
-
   addLine('');
 }
 
-function showBanner() {
+function showBanner(){
   addLine('');
-  addHTML('  <span style="color:var(--screen-yellow);font-weight:bold">🍎 mac code</span>');
-  addLine('  claude code, but it runs on your Mac for free', 'line-dim');
+  addHTML('  <span style="color:#ffcc00;font-weight:bold">🍎 mac code</span>');
+  addLine('  open-source AI on your Mac','line-dim');
   addLine('');
-  addHTML('  <span style="color:var(--screen-dim)">model </span> <span style="color:var(--screen-white);font-weight:bold">Qwen3.5-9B</span>  <span style="color:var(--screen-dim)">8.95B dense · Q4_K_M · 32K ctx</span>');
-  addHTML('  <span style="color:var(--screen-dim)">tools </span> <span style="color:var(--screen-white);font-weight:bold">search · fetch · exec · files</span>');
-  addHTML('  <span style="color:var(--screen-dim)">cost  </span> <span style="color:#33ff33;font-weight:bold">$0.00/hr</span>  <span style="color:var(--screen-dim)">Apple M4 Metal · localhost:8000</span>');
+  addHTML('  <span style="color:#227722">model</span>  <span style="color:#ccddcc;font-weight:bold">Qwen3.5-9B</span> <span style="color:#227722">Q4_K_M · 32K ctx</span>');
+  addHTML('  <span style="color:#227722">tools</span>  <span style="color:#ccddcc">search · fetch · exec · files</span>');
+  addHTML('  <span style="color:#227722">cost </span>  <span style="color:#33ff33;font-weight:bold">$0.00/hr</span> <span style="color:#227722">Metal GPU · localhost:8000</span>');
   addLine('');
-  addLine('  ─────────────────────────────────────────', 'line-dim');
-  addLine('  type / to see all commands', 'line-dim');
+  addLine('  ──────────────────────────────────────','line-dim');
+  addLine('  type / for commands','line-dim');
   addLine('');
 }
 
-// Boot sequence
-async function boot() {
-  addLine('  Macintosh System 2026.1', 'line-dim');
-  await new Promise(r => setTimeout(r, 400));
-  addLine('  Loading mac code...', 'line-dim');
-  await new Promise(r => setTimeout(r, 300));
-  addLine('  Metal GPU: Apple M4 (unified memory)', 'line-dim');
-  await new Promise(r => setTimeout(r, 200));
-  addLine('  Model: Qwen3.5-9B Q4_K_M (5.28 GB)', 'line-dim');
-  await new Promise(r => setTimeout(r, 200));
-  addLine('  33/33 layers offloaded to GPU', 'line-dim');
-  await new Promise(r => setTimeout(r, 300));
-  addLine('  Server listening on localhost:8000', 'line-dim');
-  await new Promise(r => setTimeout(r, 500));
-  terminal.innerHTML = '';
+async function boot(){
+  addLine('');
+  addLine('  Macintosh System 2026.1','line-dim');
+  await new Promise(r=>setTimeout(r,300));
+  addLine('  Loading mac code v1.0...','line-dim');
+  await new Promise(r=>setTimeout(r,250));
+  addLine('  Metal GPU: Apple M4 ✓','line-dim');
+  await new Promise(r=>setTimeout(r,200));
+  addLine('  Model: Qwen3.5-9B (5.28 GB) ✓','line-dim');
+  await new Promise(r=>setTimeout(r,200));
+  addLine('  Server: localhost:8000 ✓','line-dim');
+  await new Promise(r=>setTimeout(r,400));
+  terminal.innerHTML='';
   showBanner();
   input.focus();
 }
 
-// Input handling
-input.addEventListener('input', () => {
-  const val = input.value;
-  if (val.startsWith('/')) {
-    showSlashMenu(val);
-  } else {
-    slashMenu.classList.remove('visible');
-  }
+// Input events
+input.addEventListener('input',()=>{
+  if(input.value.startsWith('/'))showSlash(input.value);
+  else slashMenu.classList.remove('visible');
 });
 
-input.addEventListener('keydown', async (e) => {
-  if (e.key === 'Enter') {
-    const text = input.value.trim();
-    if (!text) return;
-
-    // Show what user typed
-    const tag = `${autoRoute ? 'auto' : 'agent'} ${currentModel}`;
-    addHTML(`  <span style="color:var(--screen-dim)">${tag}</span> <span style="color:var(--screen-yellow);font-weight:bold">></span> <span style="color:var(--screen-green)">${text}</span>`);
+input.addEventListener('keydown',async e=>{
+  if(e.key==='Enter'){
+    const t=input.value.trim();if(!t)return;
+    const tag=`${autoRoute?'auto':'agent'} ${currentModel}`;
+    addHTML(`  <span style="color:#227722">${tag}</span> <span style="color:#ffcc00;font-weight:bold">></span> <span style="color:#33ff33">${t}</span>`);
     addLine('');
-
-    history.unshift(text);
-    historyIdx = -1;
-    input.value = '';
-    slashMenu.classList.remove('visible');
-
-    input.disabled = true;
-    await handleCommand(text);
-    input.disabled = false;
-    input.focus();
-
-    // Update prompt
-    document.querySelector('.prompt').textContent = `${autoRoute ? 'auto' : 'agent'} ${currentModel}`;
+    cmdHistory.unshift(t);cmdIdx=-1;input.value='';slashMenu.classList.remove('visible');
+    input.disabled=true;
+    await handleInput(t);
+    input.disabled=false;input.focus();
+    promptTag.textContent=`${autoRoute?'auto':'agent'} ${currentModel}`;
   }
-
-  // History navigation
-  if (e.key === 'ArrowUp' && history.length > 0) {
-    historyIdx = Math.min(historyIdx + 1, history.length - 1);
-    input.value = history[historyIdx];
-    e.preventDefault();
-  }
-  if (e.key === 'ArrowDown') {
-    historyIdx = Math.max(historyIdx - 1, -1);
-    input.value = historyIdx >= 0 ? history[historyIdx] : '';
-    e.preventDefault();
-  }
-
-  // Tab completion
-  if (e.key === 'Tab' && input.value.startsWith('/')) {
-    e.preventDefault();
-    const matches = COMMANDS.filter(([cmd]) => cmd.startsWith(input.value));
-    if (matches.length === 1) {
-      input.value = matches[0][0] + ' ';
-      slashMenu.classList.remove('visible');
-    }
-  }
-
-  // Escape closes menu
-  if (e.key === 'Escape') {
-    slashMenu.classList.remove('visible');
-  }
+  if(e.key==='ArrowUp'&&cmdHistory.length){cmdIdx=Math.min(cmdIdx+1,cmdHistory.length-1);input.value=cmdHistory[cmdIdx];e.preventDefault();}
+  if(e.key==='ArrowDown'){cmdIdx=Math.max(cmdIdx-1,-1);input.value=cmdIdx>=0?cmdHistory[cmdIdx]:'';e.preventDefault();}
+  if(e.key==='Tab'&&input.value.startsWith('/')){e.preventDefault();const m=SLASH.filter(([c])=>c.startsWith(input.value));if(m.length===1){input.value=m[0][0]+' ';slashMenu.classList.remove('visible');}}
+  if(e.key==='Escape')slashMenu.classList.remove('visible');
 });
 
-// Click anywhere on screen focuses input
-document.querySelector('.screen').addEventListener('click', () => input.focus());
+document.querySelector('.screen').addEventListener('click',()=>input.focus());
 
-// Boot!
 boot();
 </script>
-
 </body>
 </html>

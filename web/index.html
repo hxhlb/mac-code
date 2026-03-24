@@ -339,7 +339,7 @@
         <div class="terminal" id="terminal"></div>
         <div class="slash-menu" id="slashMenu"></div>
         <div class="input-area">
-          <span class="prompt" id="promptTag">auto 9b</span>
+          <span class="prompt" id="promptTag">🍎</span>
           <span class="prompt-arrow">></span>
           <input type="text" id="input" autocomplete="off" spellcheck="false" autofocus>
         </div>
@@ -624,14 +624,13 @@ input.addEventListener('input',()=>{
 input.addEventListener('keydown',async e=>{
   if(e.key==='Enter'){
     const t=input.value.trim();if(!t)return;
-    const tag=`${autoRoute?'auto':'agent'} ${currentModel}`;
-    addHTML(`  <span style="color:#227722">${tag}</span> <span style="color:#ffcc00;font-weight:bold">></span> <span style="color:#33ff33">${t}</span>`);
+    addHTML(`  <span style="color:#ffcc00">🍎</span> <span style="color:#ffcc00;font-weight:bold">></span> <span style="color:#33ff33">${t}</span>`);
     addLine('');
     cmdHistory.unshift(t);cmdIdx=-1;input.value='';slashMenu.classList.remove('visible');
     input.disabled=true;
     await handleInput(t);
     input.disabled=false;input.focus();
-    promptTag.textContent=`${autoRoute?'auto':'agent'} ${currentModel}`;
+    promptTag.textContent='🍎';
   }
   if(e.key==='ArrowUp'&&cmdHistory.length){cmdIdx=Math.min(cmdIdx+1,cmdHistory.length-1);input.value=cmdHistory[cmdIdx];e.preventDefault();}
   if(e.key==='ArrowDown'){cmdIdx=Math.max(cmdIdx-1,-1);input.value=cmdIdx>=0?cmdHistory[cmdIdx]:'';e.preventDefault();}

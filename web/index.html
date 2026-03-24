@@ -377,13 +377,43 @@ let sessionTokens = 0;
 let currentModel = "9b";
 let autoRoute = true;
 
-// Simulated responses
-const RESPONSES = {
-  "hello": "Hello! I'm running locally on your Mac via Apple Silicon. How can I help?",
-  "hi": "Hey! 30 tok/s, zero cloud, zero cost. What do you want to build?",
-  "what are you": "I'm mac code — an open-source AI agent running Qwen3.5 locally on Apple Silicon. No API keys, no cloud, no cost per token.",
-  "what can you do": "I can search the web, read/write files, run shell commands, and answer questions — all powered by a local LLM on your Mac. Type / to see all commands.",
-};
+// LLM API
+const LLM_URL = 'http://localhost:8000/v1/chat/completions';
+let chatHistory = [];
+
+async function streamFromLLM(messages) {
+  const res = await fetch(LLM_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'local',
+      messages: messages,
+      max_tokens: 2000,
+      temperature: 0.7,
+      stream: true,
+    }),
+  });
+
+  if (!res.ok) {
+    throw new Error(`Server error: ${res.status}`);
+  }
+
+  return res.body.getReader();
+}
+
+async function nonStreamFromLLM(messages) {
+  const res = await fetch(LLM_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'local',
+      messages: messages,
+      max_tokens: 2000,
+      temperature: 0.7,
+    }),
+  });
+  return await res.json();
+}
 
 function addLine(text, cls = '') {
   const div = document.createElement('div');
@@ -538,12 +568,18 @@ async function handleCommand(text) {
   }
 
   if (lower === '/bench') {
-    const interval = showLoading();
-    await new Promise(r => setTimeout(r, 2000));
-    hideLoading(interval);
-    const speed = currentModel === '35b' ? (28 + Math.random() * 8).toFixed(1) : (15 + Math.random() * 5).toFixed(1);
-    addHTML(`  <span style="color:#33ff33;font-weight:bold">${speed} tok/s</span> generation`);
-    addLine(`  ${(60 + Math.random() * 30).toFixed(1)} tok/s prompt processing`, 'line-cyan');
+    addLine('  running benchmark...', 'line-dim');
+    try {
+      const d = await nonStreamFromLLM([{role:'user', content:'Count from 1 to 30, one per line.'}]);
+      const t = d.timings || {};
+      const u = d.usage || {};
+      addHTML(`  <span style="color:#33ff33;font-weight:bold">${(t.predicted_per_second||0).toFixed(1)} tok/s</span> generation`);
+      addHTML(`  <span style="color:#33ff33;font-weight:bold">${(t.prompt_per_second||0).toFixed(1)} tok/s</span> prompt`);
+      addLine(`  ${u.completion_tokens||0} tokens in ${((t.predicted_ms||0)/1000).toFixed(1)}s`, 'line-dim');
+    } catch(e) {
+      addLine(`  benchmark failed: ${e.message}`, 'line-error');
+      addLine('  is llama-server running on localhost:8000?', 'line-dim');
+    }
     addLine('');
     return;
   }
@@ -552,23 +588,6 @@ async function handleCommand(text) {
     addHTML(`  <span style="color:#33ff33;font-weight:bold">$0.00</span> spent locally`);
     addLine(`  ~$0.34/hr would cost on cloud GPU`, 'line-dim');
     addLine('');
-    return;
-  }
-
-  if (lower.startsWith('/search ')) {
-    const query = text.slice(8).trim();
-    const interval = showLoading();
-    await new Promise(r => setTimeout(r, 2500 + Math.random() * 2000));
-    hideLoading(interval);
-    addLine(`  Searched for: "${query}"`, 'line-dim');
-    addLine('');
-    await typeText(`  Based on web results, here's what I found about "${query}": This is a simulated response. In the real mac code agent, this would return actual DuckDuckGo search results processed by the local LLM.`, 'line-white', 15);
-    addLine('');
-    const speed = (25 + Math.random() * 10).toFixed(1);
-    addHTML(`  <span style="color:#33ff33">${speed} tok/s</span>  <span style="color:var(--screen-dim)">·  42 tokens  ·  1.4s</span>`);
-    addLine('');
-    sessionTurns++;
-    sessionTokens += 42;
     return;
   }
 
@@ -581,52 +600,76 @@ async function handleCommand(text) {
     return;
   }
 
-  // Regular chat
+  // ── Real LLM chat with streaming ──
   slashMenu.classList.remove('visible');
 
-  // Check for keyword match
-  const match = Object.keys(RESPONSES).find(k => lower.includes(k));
-
-  // Simulate auto-routing
-  const needsTools = ['search', 'find', 'look up', 'google', 'weather', 'news', 'latest', 'when', 'score', 'price'].some(k => lower.includes(k));
-
-  if (autoRoute && needsTools && currentModel === '35b') {
-    addLine('  routing to 9B (tools need 32K context)...', 'line-dim');
-    const swapInterval = showLoading();
-    await new Promise(r => setTimeout(r, 1500));
-    hideLoading(swapInterval);
-    currentModel = '9b';
-    addLine('  Switched to Qwen3.5-9B', 'line-cyan');
-    addLine('');
-  }
+  chatHistory.push({ role: 'user', content: text });
 
   const interval = showLoading();
-  const thinkTime = 1500 + Math.random() * 2500;
-  await new Promise(r => setTimeout(r, thinkTime));
-  hideLoading(interval);
+  const startTime = performance.now();
+  let fullResponse = '';
+  let tokenCount = 0;
 
-  if (match) {
-    await typeText(`  ${RESPONSES[match]}`, 'line-white', 18);
-  } else {
-    // Generate a plausible response
-    const responses = [
-      `That's a great question! As a local AI running on Apple Silicon at 30 tok/s, I can help with that. In the full mac code agent, I would use web search and my 9B/35B models to give you a detailed answer.`,
-      `Interesting! Running locally means your data never leaves your Mac. The Qwen3.5 model can handle this — try the full agent with 'python3 agent.py' for real responses with tool use.`,
-      `I'm processing this on the Metal GPU right now — no cloud, no API calls. For the full experience with web search and file operations, clone the repo and run the agent locally!`,
-    ];
-    const resp = responses[Math.floor(Math.random() * responses.length)];
-    await typeText(`  ${resp}`, 'line-white', 18);
+  try {
+    const reader = await streamFromLLM(chatHistory);
+    hideLoading(interval);
+
+    // Create response div
+    const responseDiv = document.createElement('div');
+    responseDiv.className = 'line line-white';
+    responseDiv.textContent = '  ';
+    terminal.appendChild(responseDiv);
+
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+
+      while (buffer.includes('\n')) {
+        const [line, rest] = [buffer.slice(0, buffer.indexOf('\n')), buffer.slice(buffer.indexOf('\n') + 1)];
+        buffer = rest;
+
+        const trimmed = line.trim();
+        if (!trimmed || !trimmed.startsWith('data: ')) continue;
+        const data = trimmed.slice(6);
+        if (data === '[DONE]') break;
+
+        try {
+          const obj = JSON.parse(data);
+          const content = obj.choices?.[0]?.delta?.content || '';
+          if (content) {
+            fullResponse += content;
+            tokenCount++;
+            responseDiv.textContent += content;
+            terminal.scrollTop = terminal.scrollHeight;
+          }
+        } catch(e) {}
+      }
+    }
+
+    const elapsed = ((performance.now() - startTime) / 1000).toFixed(1);
+    const speed = tokenCount > 0 ? (tokenCount / parseFloat(elapsed)).toFixed(1) : '0.0';
+
+    addLine('');
+    addHTML(`  <span style="color:#33ff33">${speed} tok/s</span>  <span style="color:var(--screen-dim)">·  ${tokenCount} tokens  ·  ${elapsed}s</span>`);
+
+    chatHistory.push({ role: 'assistant', content: fullResponse });
+    sessionTurns++;
+    sessionTokens += tokenCount;
+
+  } catch(e) {
+    hideLoading(interval);
+    addLine('');
+    addLine(`  error: ${e.message}`, 'line-error');
+    addLine('  is llama-server running on localhost:8000?', 'line-dim');
+    chatHistory.pop(); // remove failed user message
   }
 
   addLine('');
-  const tokens = 30 + Math.floor(Math.random() * 80);
-  const elapsed = (tokens / (currentModel === '35b' ? 30 : 18)).toFixed(1);
-  const speed = (tokens / elapsed).toFixed(1);
-  addHTML(`  <span style="color:#33ff33">${speed} tok/s</span>  <span style="color:var(--screen-dim)">·  ${tokens} tokens  ·  ${elapsed}s</span>`);
-  addLine('');
-
-  sessionTurns++;
-  sessionTokens += tokens;
 }
 
 function showBanner() {

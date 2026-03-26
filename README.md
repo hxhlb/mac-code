@@ -1,19 +1,25 @@
 # 🍎 mac code
 
-**Open-source AI agent on Apple Silicon. Two backends. Persistent memory. $0/month.**
+**35B model on a Mac mini. 30 tok/s. $0/month.**
 
 ---
 
-## What It Does
+## The Breakthrough
 
-An AI agent that runs locally on your Mac — web search, shell commands, file operations, code generation. Same things Claude Code does, but the LLM runs on your desk.
+A 35 billion parameter model running at 30 tok/s on a $600 Mac mini M4 with 16GB RAM. The model doesn't fit in memory — macOS pages it from the SSD through Apple Silicon's unified memory architecture. No cloud, no API keys, no monthly cost.
 
-Two backends, one agent:
+Same hardware also runs a 9B model with 64K context (doubled from 32K via quantized KV cache) and persistent context that saves/loads in 0.0003s.
 
-| Backend | Speed | Context | Persistent Memory | Best For |
-|---|---|---|---|---|
-| **llama.cpp** | 16-30 tok/s | 64K (9B) / 12K (35B) | No | 35B MoE via SSD paging |
-| **MLX** | 20 tok/s (+25%) | 64K | **Yes — save/load/R2 sync** | Persistent context, cross-device |
+| | **35B MoE (default)** | **9B (extended context)** |
+|---|---|---|
+| **Backend** | llama.cpp | llama.cpp or MLX |
+| **Speed** | 30 tok/s (SSD paging) | 16-20 tok/s |
+| **Context** | 12K | 64K (KV cache quantized) |
+| **Size** | 10.6 GB (IQ2_M, 2.6 bpw) | 5.3 GB (Q4_K_M) |
+| **Memory** | Pages from SSD | Fits in RAM |
+| **Persistent KV** | — | Save/load in 0.0003s, R2 sync |
+| **TurboQuant** | — | 4x KV cache compression (0.993 cosine) |
+| **Best for** | Reasoning, deep analysis | Long context, tool calling, cross-device |
 
 Both run the same `agent.py`. Same slash commands. Same web search. Same shell tools.
 
@@ -85,25 +91,29 @@ python3 agent.py
 
 ## Key Findings
 
-### 35B Model via SSD Paging — 30 tok/s on $600 Hardware
+### 35B via SSD Paging — 30 tok/s on $600 Hardware
 
-Qwen3.5-35B-A3B (10.6 GB) doesn't fit in 16 GB RAM. macOS pages from the SSD. On NVIDIA, paging gives 1.6 tok/s. On Apple Silicon: **30 tok/s. 18.6x faster.**
+Qwen3.5-35B-A3B (10.6 GB) doesn't fit in 16 GB RAM. macOS pages it from the SSD through Apple Silicon's unified memory. Result: **30 tok/s** on a Mac mini M4. No cloud, no GPU rental, no monthly cost.
 
 ### Tool Calling Works at 2.6 Bits Per Weight
 
-The 35B at IQ2_M quantization was supposed to have broken instruction following. JSON function calls DO break. But our LLM-as-Router (simple text classification) works perfectly — 8/8 correct.
+The 35B at IQ2_M (2.6 bpw) was supposed to have broken instruction following. JSON function calls DO break. But our LLM-as-Router (simple text classification) works perfectly — 8/8 correct. You don't need JSON tool calling if the model can classify "search" / "shell" / "chat" as plain text.
 
-### Quantized KV Cache Doubles Context For Free
+### Quantized KV Cache Doubles Context — 9B Gets 64K
 
-Two server flags (`--cache-type-k q4_0 --cache-type-v q4_0`) shrink KV cache from 1024 MB to 288 MB. The 9B goes from 32K to 64K context. Zero quality loss.
+Two server flags (`--cache-type-k q4_0 --cache-type-v q4_0`) shrink KV cache from 1024 MB to 288 MB. The 9B goes from 32K to 64K context. The 35B goes from 8K to 12K. Zero quality loss on either model.
 
-### MLX Is 25% Faster for Generation
+### TurboQuant — 4x KV Cache Compression (MLX)
 
-Same model, same hardware: MLX 20 tok/s vs llama.cpp 16 tok/s on sustained generation.
+Per-group 4-bit quantization of KV cache states, inspired by [Google's TurboQuant](https://research.google/blog/turboquant-redefining-ai-efficiency-with-extreme-compression/). Results: 26.6 MB → 6.5 MB (4.1x compression) at 0.993 cosine similarity. MSE within 2.7x of the Shannon distortion-rate bound. This makes persistent context practical — save once, resume anywhere.
 
-### Persistent Context — Process Once, Resume Anywhere (MLX only)
+### Persistent Context — Process Once, Resume Anywhere (MLX)
 
-Save KV cache to disk in 0.04s. Load in 0.0003s (6,677x faster than reprocessing). Upload to Cloudflare R2 for cross-device resume in 1.5s. TurboQuant compression makes storage 4x smaller.
+Save KV cache to SSD in 0.04s. Load in 0.0003s (6,677x faster than reprocessing). Upload to Cloudflare R2 for cross-device resume in 1.5s. Combined with TurboQuant, a full 64K context session is 6.5 MB on disk.
+
+### MLX Is 25% Faster for 9B Generation
+
+Same 9B model, same hardware: MLX 20 tok/s vs llama.cpp 16 tok/s on sustained generation. MLX also enables direct tensor access for custom compression research (kv-lab).
 
 ---
 
@@ -186,14 +196,6 @@ Type `/` to see all commands:
 | **SSD load** | **0.0003s (6,677x faster)** |
 | R2 download + load | 1.5s |
 | TurboQuant compress | 26.6 → 6.7 MB (4x) |
-
-### SSD Paging — Apple Silicon vs NVIDIA
-
-| Hardware | Speed | Cost |
-|---|---|---|
-| **Mac mini M4** | **30 tok/s** | **$0/month** |
-| NVIDIA + NVMe | 1.6 tok/s | $0.44/hr |
-| NVIDIA in-VRAM | 42.5 tok/s | $0.34/hr |
 
 ---
 

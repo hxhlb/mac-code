@@ -1,0 +1,4 @@
+timestamp	exp_id	technique	params	backend	cosine_sim	mse	ratio	compress_s	decompress_s	status	planner	description
+2026-03-25T17:36:56.763224	1	polar_quant	{"bits": 3, "group_size": 64}	mlx	0.967602	0.08523001	2.33	0.034	0.084	REVERT	api	3-bit polar coordinate quantization with group size 64
+2026-03-25T17:42:23.220529	1	residual_correction	{"base_bits": 3, "projection_dim": 256}	mlx	0.968716	0.09189764	0.86	0.048	0.399	REVERT	api	3-bit base quantization with high-dimensional residual projection correction
+2026-03-25T17:44:19.206089	2	hadamard_rotate	{"bits": 4, "group_size": 64}	mlx	0.994779	0.01866844	2.34	0.042	0.023	KEEP	api	4-bit Hadamard rotation quantization with group size 64

@@ -184,14 +184,15 @@ class SniperV2:
     def load_active_experts(self, layer_idx, expert_ids_list):
         """Load active experts — from VRAM cache or NVMe."""
         if layer_idx in self.expert_vram_cache:
-            # Instant: index from VRAM cache
+            # Instant: index from VRAM cache using long tensor
             data = self.expert_vram_cache[layer_idx]
+            idx = torch.tensor(expert_ids_list, dtype=torch.long, device=self.device)
             result = {}
             for proj in ["gate_proj", "up_proj", "down_proj"]:
                 for comp in ["weight", "scales", "biases"]:
                     key = f"{proj}.{comp}"
                     full = data[key]  # [256, ...]
-                    result[key] = full[expert_ids_list]
+                    result[key] = torch.index_select(full, 0, idx)
             return result
         else:
             # Cold: load from NVMe (full tensor, index on CPU, transfer to GPU)

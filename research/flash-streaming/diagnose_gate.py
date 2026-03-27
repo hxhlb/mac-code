@@ -5,7 +5,8 @@ If gate weight is zeros, that's the bug (random routing → structured garbage).
 import torch
 from safetensors import safe_open
 from transformers import AutoConfig, AutoModelForCausalLM
-from accelerate import init_empty_weights, set_module_tensor_to_device
+from accelerate import init_empty_weights
+from accelerate.utils import set_module_tensor_to_device
 
 print("=" * 60)
 print("  GATE WEIGHT DIAGNOSTIC")

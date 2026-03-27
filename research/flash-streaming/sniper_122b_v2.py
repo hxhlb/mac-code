@@ -481,7 +481,12 @@ def main():
 
     print(f"\nLoading tokenizer...")
     from transformers import AutoTokenizer
-    tokenizer = AutoTokenizer.from_pretrained("Qwen/Qwen3.5-122B-A10B", trust_remote_code=True)
+    # Try local model dir first, fall back to HF
+    tokenizer_path = str(Path(args.model_dir).parent / "qwen35-122b-a10b-4bit")
+    if Path(tokenizer_path).exists() and (Path(tokenizer_path) / "tokenizer.json").exists():
+        tokenizer = AutoTokenizer.from_pretrained(tokenizer_path, trust_remote_code=True)
+    else:
+        tokenizer = AutoTokenizer.from_pretrained("Qwen/Qwen3.5-122B-A10B", trust_remote_code=True)
 
     messages = [
         {"role": "system", "content": "Think briefly, answer directly."},

@@ -66,14 +66,14 @@ Full CLI and Python API: [huggingface.co/waltgrace/mlx-expert-sniper](https://hu
 |--------|-------|
 | Model | Qwen3-30B-A3B (17.2 GB, 4-bit) |
 | Standard mlx_lm | OOM |
-| **Qwen3.5-35B-A3B (19.5 GB)** | **5.18 tok/s** (256 experts, cache=4000, REAP+bias=1.0) |
+| **Qwen3.5-35B-A3B (19.5 GB)** | **5.37 tok/s** (256 experts, cache=4000, bias=1.0, co-activation) |
 | **Qwen3-30B-A3B (17.2 GB)** | **3.34 tok/s** (128 experts, cache=3000, co-activation) |
-| Cache hit rate | 94% (35B) / 79% (30B) |
-| TTFT | 2.6s (35B) / 6s (30B) |
-| RAM | 8.8 GB (35B) / 9.1 GB (30B) |
-| Hardware | M4 Mac Mini 16 GB, 5 varied prompts |
+| Cache hit rate | 92% (35B) / 79% (30B) |
+| TTFT | 2.9s (35B) / 6s (30B) |
+| RAM | 8.7 GB (35B) / 9.1 GB (30B) |
+| Hardware | M4 Mac Mini 16 GB, 5 varied prompts, cold start |
 
-35B optimizations: REAP dead-expert masking (45% skipped) + routing bias=1.0 + co-activation prefetch. 30B: right-sized LRU + co-activation (REAP/bias not yet applied).
+35B: routing bias=1.0 + co-activation prefetch + right-sized LRU. Quality verified from cold start. REAP dead-expert masking tested (45% dead) but NOT used in final numbers — static masking breaks factual knowledge on topics outside calibration set. 30B: right-sized LRU + co-activation (bias not yet applied).
 
 ## llama.cpp Path (Cross-Platform GPU)
 

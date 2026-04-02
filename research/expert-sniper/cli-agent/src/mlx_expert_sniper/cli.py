@@ -2,6 +2,7 @@
 mlx-sniper CLI.
 
 Usage:
+    mlx-sniper download qwen3.5-35b [-o ~/models/qwen35-35b]
     mlx-sniper calibrate <model-dir> [--quick] [--force] [--ram N]
     mlx-sniper run <model-dir> -p "prompt" [-v] [--max-tokens N]
 """
@@ -9,6 +10,25 @@ import argparse
 import sys
 import os
 import time
+
+
+def cmd_download(args):
+    from .download import download_model, list_models
+
+    if args.model_name == "list":
+        list_models()
+        return
+
+    output = args.output
+    if output:
+        output = os.path.expanduser(output)
+
+    download_model(
+        args.model_name,
+        output_dir=output,
+        calibrate_quick=not args.full_calibrate,
+        keep_download=args.keep_download,
+    )
 
 
 def cmd_calibrate(args):
@@ -161,6 +181,13 @@ def main():
     )
     sub = parser.add_subparsers(dest="command")
 
+    # download
+    p = sub.add_parser("download", help="Download, preprocess, and calibrate a model")
+    p.add_argument("model_name", help="Model name (e.g. qwen3.5-35b) or 'list'")
+    p.add_argument("-o", "--output", default=None, help="Output directory (default: ~/models/<name>)")
+    p.add_argument("--full-calibrate", action="store_true", help="Run full calibration with bias sweep")
+    p.add_argument("--keep-download", action="store_true", help="Keep raw HF download after preprocessing")
+
     # calibrate
     p = sub.add_parser("calibrate", help="One-time model calibration (~2-8 min)")
     p.add_argument("model_dir", help="Path to sniper model directory")
@@ -180,7 +207,7 @@ def main():
         parser.print_help()
         sys.exit(1)
 
-    {"calibrate": cmd_calibrate, "run": cmd_run}[args.command](args)
+    {"download": cmd_download, "calibrate": cmd_calibrate, "run": cmd_run}[args.command](args)
 
 
 if __name__ == "__main__":

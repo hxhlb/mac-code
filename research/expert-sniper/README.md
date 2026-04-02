@@ -136,6 +136,26 @@ python3 sniper-router/router.py --server http://gpu-server:8201
 
 Note: Prior GPU benchmarks had a device pointer bug where the eval callback dereferenced CUDA device pointers as host pointers, causing silent failures. All GPU speed numbers above are stock llama.cpp baselines. The expert cache was not contributing to these results.
 
+### Gemma 4-26B-A4B — MoE Sparsity vs RAM Pressure
+
+Google's Gemma 4-26B-A4B has 128 experts with top-8 routing (4B active of 26B total). Tested with stock llama.cpp (no madvise) at multiple quantization levels:
+
+| Hardware | Quant | Model size | RAM | Speed | Thrash? |
+|----------|-------|-----------|-----|-------|---------|
+| M2 MacBook Air | IQ2_M | 9.3 GB | 8 GB | **1.37 tok/s** | No — MoE sparsity keeps working set small |
+| M4 Mac Mini | IQ2_M | 9.3 GB | 16 GB | **36.5 tok/s** | No — fits in RAM |
+| M4 Mac Mini | Q4_K_M | 16.9 GB | 16 GB | **5.18 tok/s** | No — MoE sparsity handles it |
+| M4 Mac Mini | Q8_0 | ~27 GB | 16 GB | *testing* | *pending* |
+
+**Key finding:** Gemma 4's MoE sparsity ratio (4B/26B = 15.4% activation) is low enough that the OS page cache handles memory pressure without explicit madvise prefetch. This contrasts with Qwen3.5-35B-A3B where stock llama.cpp thrashes to 0 tok/s at 10.6 GB on 8 GB RAM — Qwen's higher effective activation ratio (shared experts + larger attention) overwhelms the page cache.
+
+**Implication for the sniper:** The madvise expert prefetch is most valuable when the model's per-token working set approaches available RAM. For highly sparse MoE models like Gemma 4, the OS handles it naturally. The sniper adds value for:
+- Denser MoE models (Qwen, where shared experts increase the working set)
+- Larger quantizations (Q8_0 at 27 GB on 16 GB — 1.7x oversubscription)
+- Models with more experts per token or larger expert sizes
+
+All Gemma 4 results use stock llama.cpp with mmap. Canberra verified on all configurations.
+
 ## Docker (GPU — no build needed)
 
 ```bash

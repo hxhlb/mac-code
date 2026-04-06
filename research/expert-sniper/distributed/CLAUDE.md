@@ -43,9 +43,9 @@ snapshot_download('mlx-community/Qwen3.5-35B-A3B-4bit', local_dir='~/models/qwen
 
 #### 2. Split model (on each Mac)
 ```bash
-python3 split_qwen.py
-# Edit MODEL_DIR and OUTPUT_DIR paths in the script first
+python3 split_qwen.py --input ~/models/qwen35-4bit --output ~/models/qwen35-stream
 # Creates: ~/models/qwen35-stream/{pinned.safetensors, bin/layer_XX.bin, config.json}
+# Add --delete-source to free disk by removing original shards after splitting
 ```
 
 #### 3. Start expert nodes

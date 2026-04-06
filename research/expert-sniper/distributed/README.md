@@ -63,34 +63,45 @@ See [mlx-sniper/README.md](../mlx-sniper/README.md) for the single-machine setup
 ## Install
 
 ```bash
-cd distributed/
+# From the repo root:
+cd research/expert-sniper/distributed/
 pip install -e .
 ```
 
 This gives you the `mac-tensor` CLI. Or run directly with `python3 -m mac_tensor`.
 
-## Quick Start (CLI)
+## Quick Start (CLI — Orchestrated)
+
+The CLI SSHes into your remote Macs and handles everything from your laptop.
 
 ```bash
-# See supported models
-mac-tensor info
+# 1. Configure your cluster (enter IPs, credentials)
+mac-tensor init
 
-# Download model (on each Mac)
-mac-tensor download --model qwen35
+# 2. Deploy code + download model on all nodes (takes a few minutes)
+mac-tensor deploy
 
-# Split for distributed use (on each Mac, Qwen only)
-mac-tensor split --model qwen35
+# 3. Start expert nodes on all remotes
+mac-tensor up
 
-# Start expert nodes
-mac-tensor node --model qwen35 --partition 0-127 --port 8301    # Mac 2
-mac-tensor node --model qwen35 --partition 128-255 --port 8301  # Mac 3
+# 4. Check if nodes are loaded (~90 seconds to warm up)
+mac-tensor status
 
-# Check nodes are ready
-mac-tensor health --nodes http://mac2:8301,http://mac3:8301
+# 5. Chat!
+mac-tensor chat
 
-# Chat!
-mac-tensor chat --model qwen35 --nodes http://mac2:8301,http://mac3:8301
+# 6. When done, stop all nodes
+mac-tensor down
 ```
+
+Or all-in-one: `mac-tensor run --model qwen35` (does steps 2-5 automatically).
+
+The CLI saves your cluster config at `~/.mac-tensor/cluster.json`, so you only run `init` once.
+
+### What `init` asks for
+- SSH credentials for each expert node Mac (user@ip:password or user@ip for SSH keys)
+- Whether the coordinator runs locally or on a remote Mac
+- Which model to use (qwen35 or gemma4)
 
 ## Quick Start (Manual)
 
@@ -115,8 +126,9 @@ snapshot_download('mlx-community/Qwen3.5-35B-A3B-4bit', local_dir='~/models/qwen
 
 **2. Split model (on each Mac):**
 ```bash
-python3 split_qwen.py
+python3 split_qwen.py --input ~/models/qwen35-4bit --output ~/models/qwen35-stream
 # Creates: ~/models/qwen35-stream/{pinned.safetensors, bin/layer_XX.bin}
+# Add --delete-source to remove original files after splitting (saves disk)
 ```
 
 **3. Start expert nodes:**
@@ -197,6 +209,10 @@ Connection pooling via `requests.Session` keeps TCP connections alive across req
 
 ```
 distributed/
+├── mac_tensor/                  # CLI package
+│   ├── __init__.py
+│   ├── __main__.py
+│   └── cli.py                   # mac-tensor command (init, deploy, up, chat, etc.)
 ├── expert_node_fast.py          # Qwen expert partition server
 ├── gemma4_expert_node.py        # Gemma 4 expert partition server
 ├── distributed_reader_fast.py   # Client-side reader (connection pooling + binary)
@@ -205,6 +221,9 @@ distributed/
 ├── split_qwen.py                # Split Qwen MLX model into streaming format
 ├── split_gemma4.py              # Split Gemma 4 MLX model (optional)
 ├── models_gemma4.py             # Custom Gemma 4 model definition for MLX
+├── pyproject.toml               # pip install config
+├── setup.py                     # pip install -e . support
+├── requirements.txt             # Python dependencies
 ├── CLAUDE.md                    # Instructions for Claude Code to spin this up
 └── README.md                    # This file
 ```

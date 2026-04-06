@@ -1,14 +1,24 @@
 #!/usr/bin/env python3
-"""Split Qwen3.5-35B-A3B-4bit — delete source shards after processing to save disk."""
-import os, json, gc, time, re, glob
+"""Split Qwen3.5-35B-A3B-4bit into pinned weights + per-layer expert bins."""
+import os, json, gc, time, re, glob, argparse
 import numpy as np
 import mlx.core as mx
 
-MLX_MODEL_DIR = "~/models/qwen35-4bit"
-OUTPUT_DIR = "~/models/qwen35-stream"
 PAGE_SIZE = 16384
 
 def main():
+    parser = argparse.ArgumentParser(description="Split Qwen 3.5-35B for distributed inference")
+    parser.add_argument("--input", "-i", default="~/models/qwen35-4bit",
+                        help="Input MLX model directory (default: ~/models/qwen35-4bit)")
+    parser.add_argument("--output", "-o", default="~/models/qwen35-stream",
+                        help="Output streaming directory (default: ~/models/qwen35-stream)")
+    parser.add_argument("--delete-source", action="store_true",
+                        help="Delete source shard files after processing (saves disk)")
+    args = parser.parse_args()
+
+    MLX_MODEL_DIR = os.path.expanduser(args.input)
+    OUTPUT_DIR = os.path.expanduser(args.output)
+
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     os.makedirs(f"{OUTPUT_DIR}/bin", exist_ok=True)
 
@@ -103,9 +113,10 @@ def main():
 
         del w; gc.collect()
 
-        # Delete the shard file to free disk
-        os.remove(sf)
-        print(f"  Deleted {os.path.basename(sf)} to free disk")
+        # Optionally delete the shard file to free disk
+        if args.delete_source:
+            os.remove(sf)
+            print(f"  Deleted {os.path.basename(sf)} to free disk")
 
     # Save pinned
     pinned_bytes = sum(v.nbytes for v in pinned.values())

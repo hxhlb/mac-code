@@ -1,6 +1,6 @@
 # Expert Sniper — Run MoE Models Larger Than Your RAM
 
-Two approaches to running 30-35B MoE models on machines that can't hold them in memory.
+Three approaches to running 30-35B MoE models on machines that can't hold them in memory.
 
 ## Overview
 
@@ -12,11 +12,16 @@ RAM:   0.87-1.4 GB used
 The rest streams from disk on demand
 ```
 
-## Two Paths
+## Three Paths
 
 ```
 expert-sniper/
-├── mlx-sniper/          ← Apple Silicon (MLX) — 3.3 tok/s on 16 GB Mac Mini
+├── distributed/         ← NEW: mac-tensor — multi-Mac distributed inference
+│   ├── Qwen 3.5-35B: 1.30 tok/s across 3 Mac Minis
+│   ├── Gemma 4-26B:  1.23 tok/s across 3 Mac Minis
+│   └── Each Mac only needs 10-13 GB RAM
+│
+├── mlx-sniper/          ← Single Mac (MLX) — 5.37 tok/s on 16 GB Mac Mini
 │   ├── Install: pip install -e .
 │   ├── CLI: mlx-sniper chat ~/models/qwen3-30b
 │   └── Server: mlx-sniper server ~/models/qwen3-30b --port 8899
@@ -36,6 +41,25 @@ expert-sniper/
 │
 └── RESEARCH.md          ← Full technical writeup
 ```
+
+## Distributed — mac-tensor (NEW)
+
+Run 35B parameter models across multiple Macs over the network. Split expert weights across machines, compute in parallel.
+
+```bash
+# Mac 2 & 3: start expert nodes
+python3 distributed/expert_node_fast.py --partition 0-127 --model-dir ~/models/qwen35-stream --port 8301
+
+# Mac 1: start chatting
+python3 distributed/distributed_interactive.py --nodes http://mac2:8301,http://mac3:8301
+```
+
+| Model | Nodes | Speed | RAM/Node |
+|-------|-------|-------|----------|
+| Qwen 3.5-35B | 3 Mac Minis | 1.30 tok/s | ~10 GB |
+| Gemma 4-26B | 3 Mac Minis | 1.23 tok/s | ~13 GB |
+
+> Speeds are early — we're actively optimizing and open-sourcing for community contributions. See [distributed/README.md](distributed/README.md) for full setup guide.
 
 ## MLX Sniper (Apple Silicon)
 

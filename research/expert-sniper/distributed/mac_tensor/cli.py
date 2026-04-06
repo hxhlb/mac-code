@@ -705,6 +705,15 @@ Local commands (run on the Mac itself):
     p_ag.add_argument("--write", action="store_true",
                       help="Allow file writes and destructive shell commands")
 
+    # UI (web chat interface)
+    p_ui = sub.add_parser("ui", help="Web chat UI for the distributed agent")
+    p_ui.add_argument("--model", choices=SUPPORTED_MODELS.keys(), default="gemma4")
+    p_ui.add_argument("--nodes", required=True, help="Comma-separated expert node URLs")
+    p_ui.add_argument("--host", default="0.0.0.0", help="Bind host (default 0.0.0.0)")
+    p_ui.add_argument("--port", type=int, default=8500, help="Port (default 8500)")
+    p_ui.add_argument("--write", action="store_true",
+                      help="Allow file writes and destructive shell commands")
+
     args = parser.parse_args()
 
     if args.command is None:
@@ -714,6 +723,10 @@ Local commands (run on the Mac itself):
     def cmd_agent(args):
         from .agent import main as agent_main
         agent_main(args)
+
+    def cmd_ui(args):
+        from .server import main as ui_main
+        ui_main(args)
 
     commands = {
         "init": cmd_init,
@@ -728,6 +741,7 @@ Local commands (run on the Mac itself):
         "download": cmd_download_local,
         "health": lambda a: cmd_health_standalone(a),
         "agent": cmd_agent,
+        "ui": cmd_ui,
     }
 
     commands[args.command](args)

@@ -374,79 +374,108 @@ class AgentBackend:
 # ============================================================
 
 
-def run_agent_turn(backend, user_question, max_iterations=6, max_tokens=400,
-                   temperature=0.5, allow_write=False, verbose=True):
-    """Run one user turn — multi-step tool use loop."""
-    backend.reset()  # Fresh KV cache per user turn
+def run_agent_turn_stream(backend, user_question, max_iterations=6,
+                            max_tokens=300, temperature=0.5, allow_write=False):
+    """Run one user turn as a generator yielding events.
 
-    # Initial prompt
+    Each yield is a dict with a 'type' key. Types:
+      - {"type": "step_start", "step": N, "max": M}
+      - {"type": "token", "text": "..."}        — streaming tokens
+      - {"type": "tool_call", "tool": "ls", "args": "."}
+      - {"type": "tool_result", "result": "..."}
+      - {"type": "final", "text": "..."}        — final answer
+      - {"type": "done"}
+      - {"type": "error", "message": "..."}
+    """
+    backend.reset()
     prompt = SYSTEM_PROMPT + " " + user_question
-
     final_answer = None
+    continuation = None
+
+    # We collect tokens via this list because the streaming callback runs
+    # in a different scope. The generator body checks it after each generate call.
+    chunk_buffer = []
+
+    def on_chunk(text):
+        chunk_buffer.append(text)
 
     for step in range(max_iterations):
-        if verbose:
-            print(f"\n  [Step {step + 1}/{max_iterations}]", end=" ", flush=True)
+        yield {"type": "step_start", "step": step + 1, "max": max_iterations}
+        chunk_buffer.clear()
 
-        def stream_chunk(chunk):
-            if verbose:
-                # Strip the model's attempts to invent <result> tags from display
-                print(chunk, end="", flush=True)
-
-        # First step uses the full prompt; subsequent steps just feed result tokens
-        if step == 0:
+        try:
             text = backend.generate_until_stop(
-                prompt,
+                prompt if step == 0 else continuation,
                 stop_sequences=STOP_SEQUENCES + ["</result>"],
                 max_tokens=max_tokens,
                 temperature=temperature,
-                on_chunk=stream_chunk,
+                on_chunk=on_chunk,
             )
-        else:
-            # Continuation: feed only the new tokens (result + nudge)
-            text = backend.generate_until_stop(
-                continuation,
-                stop_sequences=STOP_SEQUENCES + ["</result>"],
-                max_tokens=max_tokens,
-                temperature=temperature,
-                on_chunk=stream_chunk,
-            )
+        except Exception as e:
+            yield {"type": "error", "message": str(e)}
+            return
 
-        # Strip any hallucinated <result>...</result> the model wrote
+        # Yield buffered tokens (they're already chunked, but the server's SSE
+        # path consumes the buffer after generation completes — see server.py
+        # for the live-streaming path which uses on_chunk directly)
+        for c in chunk_buffer:
+            yield {"type": "token", "text": c}
+
+        # Strip hallucinated <result> blocks
         text = re.sub(r"<result>.*?</result>", "", text, flags=re.DOTALL)
 
-        # Parse first tool call
         call = parse_first_tool(text)
 
         if call is None:
-            # No tool call → final answer
             final_answer = text.strip()
-            if verbose:
-                print()
-            break
+            yield {"type": "final", "text": final_answer}
+            yield {"type": "done"}
+            return
 
-        # Execute the tool
+        # Execute tool
         tool_name = call["tool"]
-        tool_arg = call.get("content", "")[:60].replace("\n", " ")
-        if verbose:
-            print(f"\n  → tool: <{tool_name}> {tool_arg}...")
+        tool_arg = call.get("content", "")
+        yield {"type": "tool_call", "tool": tool_name, "args": tool_arg[:200]}
 
         result = execute_tool(call, allow_write=allow_write)
-        if verbose:
-            preview = result[:120].replace("\n", " | ")
-            print(f"  ← {preview}{'...' if len(result) > 120 else ''}")
+        yield {"type": "tool_result", "result": result[:2000]}
 
-        # Build the continuation prompt for the next step.
-        # We feed: the model's tool call + a real <result>...</result> + a nudge
         continuation = (
             f"<result>\n{result}\n</result>\n\n"
             f"Now either call another tool or give a final answer (no tags):"
         )
 
-    if final_answer is None:
-        final_answer = "(hit iteration limit without producing a final answer)"
+    yield {"type": "final", "text": "(iteration limit reached)"}
+    yield {"type": "done"}
 
-    return final_answer
+
+def run_agent_turn(backend, user_question, max_iterations=6, max_tokens=300,
+                   temperature=0.5, allow_write=False, verbose=True):
+    """Synchronous wrapper around run_agent_turn_stream — used by the REPL."""
+    final = "(no answer)"
+    for event in run_agent_turn_stream(
+        backend, user_question,
+        max_iterations=max_iterations,
+        max_tokens=max_tokens,
+        temperature=temperature,
+        allow_write=allow_write,
+    ):
+        et = event["type"]
+        if et == "step_start" and verbose:
+            print(f"\n  [Step {event['step']}/{event['max']}]", end=" ", flush=True)
+        elif et == "token" and verbose:
+            print(event["text"], end="", flush=True)
+        elif et == "tool_call" and verbose:
+            preview = event["args"][:60].replace("\n", " ")
+            print(f"\n  → tool: <{event['tool']}> {preview}...")
+        elif et == "tool_result" and verbose:
+            preview = event["result"][:120].replace("\n", " | ")
+            print(f"  ← {preview}{'...' if len(event['result']) > 120 else ''}")
+        elif et == "final":
+            final = event["text"]
+        elif et == "error" and verbose:
+            print(f"\n  ERROR: {event['message']}")
+    return final
 
 
 def agent_loop(backend, max_iterations=6, max_tokens=400, allow_write=False):

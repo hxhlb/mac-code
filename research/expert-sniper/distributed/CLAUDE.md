@@ -6,6 +6,15 @@ Distributed MoE inference across multiple Macs over the network. Each Mac holds 
 
 Supports: **Qwen 3.5-35B-A3B** and **Gemma 4-26B-A4B** (both 4-bit quantized).
 
+## Single Machine Alternative
+
+If the user only has one Mac, point them to `../mlx-sniper/` instead — it streams experts from SSD at **5.37 tok/s** on a single M4 Mac Mini (16 GB). Much faster than distributed for single-machine use.
+
+```bash
+cd ../mlx-sniper && pip install -e .
+mlx-sniper chat ~/models/qwen3-30b
+```
+
 ## Architecture
 
 ```

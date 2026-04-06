@@ -37,7 +37,30 @@ Tested on Scaleway Mac Mini M2 (16 GB, ~$0.13/hr each).
 
 > **These speeds are not fast.** We know. The bottleneck is 30-40 sequential HTTP round trips per token over the network. We're actively optimizing (raw TCP, pipelining, better batching) and **open-sourcing so the community can help push this further.** If you have ideas — open an issue or PR.
 
-## Quick Start
+## Single Mac? Use mlx-sniper Instead
+
+If you only have **one Mac**, you don't need the distributed setup. The single-machine Expert Sniper streams experts from SSD and is significantly faster:
+
+| Setup | Speed | Hardware |
+|-------|-------|----------|
+| **Single Mac (mlx-sniper)** | **5.37 tok/s** | 1x M4 Mac Mini 16 GB |
+| Distributed (mac-tensor) | 1.30 tok/s | 3x Mac Mini M2 16 GB |
+
+```bash
+# Single Mac — just install and go
+cd ../mlx-sniper && pip install -e .
+mlx-sniper chat ~/models/qwen3-30b
+```
+
+See [mlx-sniper/README.md](../mlx-sniper/README.md) for the single-machine setup. It supports Qwen3-30B, Qwen3.5-35B, and more via SSD expert streaming with LRU cache + routing bias.
+
+**When to use distributed (mac-tensor) instead:**
+- You have multiple cheap Macs and want to pool their RAM
+- The model doesn't fit on a single machine (even with SSD streaming)
+- You want all experts in RAM (zero SSD latency, no cache misses)
+- You're running a cloud fleet (e.g., Scaleway Mac Minis at $0.13/hr each)
+
+## Quick Start (Distributed)
 
 ### Requirements
 - 2-3 Macs with Apple Silicon (M1/M2/M3/M4), 16 GB RAM each

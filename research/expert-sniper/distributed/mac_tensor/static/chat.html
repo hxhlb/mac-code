@@ -460,6 +460,9 @@
     </div>
     <input type="file" id="file-input" accept="image/*" style="display:none;">
     <button class="btn" id="upload-btn" title="Upload image" style="height:50px; width:50px; padding:0; font-size:20px;" data-vision="{{VISION_ENABLED}}">📷</button>
+    <button class="btn" id="ground-btn" title="Find objects (Falcon Perception)" style="height:50px; padding: 0 16px; display:none;" data-falcon="{{FALCON_ENABLED}}">
+      <span style="font-size:16px;">🎯</span> Ground
+    </button>
     <button class="btn primary send-btn" id="send-btn">Send</button>
   </div>
 </footer>
@@ -470,14 +473,19 @@ const inputEl = document.getElementById('input');
 const sendBtn = document.getElementById('send-btn');
 const resetBtn = document.getElementById('reset-btn');
 const uploadBtn = document.getElementById('upload-btn');
+const groundBtn = document.getElementById('ground-btn');
 const fileInput = document.getElementById('file-input');
 const imagePreview = document.getElementById('image-preview');
 const previewImg = document.getElementById('preview-img');
 const removeImageBtn = document.getElementById('remove-image');
 
 const VISION_ENABLED = uploadBtn.dataset.vision === 'true';
+const FALCON_ENABLED = groundBtn.dataset.falcon === 'true';
 if (!VISION_ENABLED) {
   uploadBtn.style.display = 'none';
+}
+if (FALCON_ENABLED) {
+  groundBtn.style.display = 'inline-flex';
 }
 
 let isGenerating = false;
@@ -546,6 +554,95 @@ inputEl.addEventListener('keydown', (e) => {
 });
 
 sendBtn.addEventListener('click', sendMessage);
+
+groundBtn.addEventListener('click', async () => {
+  if (isGenerating) return;
+  if (!attachedImage) {
+    alert('Upload an image first (📷 button or drag-and-drop)');
+    return;
+  }
+  const query = inputEl.value.trim();
+  if (!query) {
+    alert('Type what you want to find (e.g. "bird", "car", "person")');
+    return;
+  }
+
+  isGenerating = true;
+  groundBtn.disabled = true;
+  sendBtn.disabled = true;
+
+  const imageDataUrl = previewImg.src;
+  const imageToSend = attachedImage;
+  attachedImage = null;
+  fileInput.value = '';
+  imagePreview.style.display = 'none';
+  inputEl.value = '';
+  autoResize();
+
+  // Show user message in chat
+  appendMessage('user', `🎯 Find: "${query}"`, imageDataUrl);
+
+  // Append a "grounding" placeholder
+  const wrap = document.createElement('div');
+  wrap.className = 'message';
+  wrap.innerHTML = `
+    <div class="message-role agent">Falcon Perception</div>
+    <div class="bubble agent">
+      <div class="thinking">
+        Running grounding model
+        <span class="thinking-dots"><span></span><span></span><span></span></span>
+      </div>
+    </div>
+  `;
+  messagesEl.appendChild(wrap);
+  scrollToBottom();
+  const bubble = wrap.querySelector('.bubble');
+
+  try {
+    const fd = new FormData();
+    fd.append('query', query);
+    fd.append('image', imageToSend);
+
+    const response = await fetch('/api/falcon', { method: 'POST', body: fd });
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({error: 'unknown'}));
+      throw new Error(err.error || `HTTP ${response.status}`);
+    }
+    const data = await response.json();
+
+    // Render the annotated image + count summary + mask metadata
+    let metaHtml = '';
+    if (data.masks && data.masks.length > 0) {
+      metaHtml = '<div style="margin-top:12px; font-size:13px; color:var(--text-muted);">';
+      data.masks.forEach((m, i) => {
+        const cx = (m.centroid_norm.x * 100).toFixed(0);
+        const cy = (m.centroid_norm.y * 100).toFixed(0);
+        const area = (m.area_fraction * 100).toFixed(1);
+        metaHtml += `<div>#${m.id} — ${m.image_region}, center (${cx}%, ${cy}%), area ${area}%</div>`;
+      });
+      metaHtml += '</div>';
+    }
+
+    bubble.innerHTML = `
+      <div style="font-size:15px; margin-bottom:10px;">
+        <b style="color:var(--orange);">Found ${data.count}</b>
+        ${data.count === 1 ? 'instance' : 'instances'} of
+        <i>"${escapeHtml(query)}"</i>
+        in ${data.elapsed_seconds}s
+      </div>
+      <img src="${data.annotated_image}" style="max-width:100%; border-radius:10px; border:1px solid var(--border);">
+      ${metaHtml}
+    `;
+  } catch (e) {
+    bubble.innerHTML = `<span style="color: var(--red);">Error: ${escapeHtml(e.message)}</span>`;
+  } finally {
+    isGenerating = false;
+    groundBtn.disabled = false;
+    sendBtn.disabled = false;
+    scrollToBottom();
+  }
+});
+
 resetBtn.addEventListener('click', async () => {
   await fetch('/api/reset', { method: 'POST' });
   // Clear UI

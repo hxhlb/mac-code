@@ -19,18 +19,21 @@ from queue import Queue, Empty
 
 
 def run_server(model_key, node_urls=None, host="0.0.0.0", port=8500, allow_write=False,
-               vision=False, stream_dir=None, source_dir=None):
+               vision=False, stream_dir=None, source_dir=None,
+               falcon=False, falcon_model=None):
     """Start the FastAPI server with the agent backend pre-loaded.
 
-    Two modes:
+    Three modes:
       - Distributed text-only: pass node_urls
-      - Single-machine vision: pass vision=True + stream_dir + source_dir
+      - Single-machine vision (Gemma 4 only): vision=True
+      - Vision + Falcon Perception (segmentation): vision=True, falcon=True
     """
     from fastapi import FastAPI, Request, UploadFile, File, Form
     from fastapi.responses import HTMLResponse, StreamingResponse, JSONResponse
     from .agent import AgentBackend, run_agent_turn_stream
 
     vision_engine = None
+    falcon_tools = None
 
     if vision:
         print(f"Loading vision Gemma 4 sniper (single-machine)...")
@@ -41,6 +44,15 @@ def run_server(model_key, node_urls=None, host="0.0.0.0", port=8500, allow_write
         )
         vision_engine.load()
         print("Vision engine ready.")
+
+        if falcon:
+            print(f"Loading Falcon Perception...")
+            from .falcon_perception import FalconPerceptionTools
+            falcon_tools = FalconPerceptionTools.load(
+                model_path=falcon_model or "/Users/bigneek/models/falcon-perception"
+            )
+            print("Falcon Perception ready.")
+
         backend = None  # Not used in vision mode
     else:
         print(f"Loading {model_key} distributed engine...")
@@ -67,7 +79,8 @@ def run_server(model_key, node_urls=None, host="0.0.0.0", port=8500, allow_write
 
     chat_html = chat_html.replace("{{MODEL_NAME}}", model_label) \
                           .replace("{{NODE_COUNT}}", node_count_label) \
-                          .replace("{{VISION_ENABLED}}", "true" if vision else "false")
+                          .replace("{{VISION_ENABLED}}", "true" if vision else "false") \
+                          .replace("{{FALCON_ENABLED}}", "true" if falcon_tools is not None else "false")
 
     # Lock so only one chat request runs at a time (single MoE engine)
     lock = threading.Lock()
@@ -83,6 +96,7 @@ def run_server(model_key, node_urls=None, host="0.0.0.0", port=8500, allow_write
             "nodes": node_urls,
             "allow_write": allow_write,
             "vision": vision,
+            "falcon": falcon_tools is not None,
         }
 
     @app.post("/api/reset")
@@ -184,6 +198,63 @@ def run_server(model_key, node_urls=None, host="0.0.0.0", port=8500, allow_write
                      "Connection": "keep-alive"},
         )
 
+    @app.post("/api/falcon")
+    async def falcon_ground(
+        query: str = Form(...),
+        image: UploadFile = File(...),
+    ):
+        """Run Falcon Perception on uploaded image with text query.
+
+        Returns JSON with detected masks (count, IDs, metadata) plus a
+        base64-encoded annotated image showing bounding boxes + labels.
+        """
+        if falcon_tools is None:
+            return JSONResponse({"error": "Falcon Perception not loaded"}, status_code=400)
+
+        # Save uploaded image
+        import tempfile, base64, io
+        tmp = tempfile.NamedTemporaryFile(suffix="_" + image.filename, delete=False)
+        tmp.write(await image.read())
+        tmp.close()
+
+        try:
+            with lock:
+                # Set image in Falcon session
+                falcon_tools.set_image(tmp.name)
+                # Run grounding
+                t0 = time.time()
+                result = falcon_tools.ground(query, slot=query.replace(" ", "_")[:32])
+                elapsed = time.time() - t0
+
+                if "error" in result:
+                    return JSONResponse(result, status_code=500)
+
+                # Annotate the image with bounding boxes
+                annotated = falcon_tools.annotate_image(mask_ids=result["mask_ids"])
+
+                # Encode annotated image as base64 PNG
+                buf = io.BytesIO()
+                annotated.save(buf, format="PNG")
+                annotated_b64 = base64.b64encode(buf.getvalue()).decode()
+
+                return JSONResponse({
+                    "query": query,
+                    "count": result["count"],
+                    "mask_ids": result["mask_ids"],
+                    "masks": result["masks"],
+                    "annotated_image": f"data:image/png;base64,{annotated_b64}",
+                    "elapsed_seconds": round(elapsed, 2),
+                })
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return JSONResponse({"error": str(e)}, status_code=500)
+        finally:
+            try:
+                os.unlink(tmp.name)
+            except Exception:
+                pass
+
     print()
     print("=" * 60)
     print(f"  mac-tensor UI ready")
@@ -223,6 +294,8 @@ def main(args):
             vision=True,
             stream_dir=getattr(args, "stream_dir", None),
             source_dir=getattr(args, "source_dir", None),
+            falcon=getattr(args, "falcon", False),
+            falcon_model=getattr(args, "falcon_model", None),
         )
     else:
         if not args.nodes:

@@ -717,6 +717,9 @@ Local commands (run on the Mac itself):
                       help="Single-machine vision mode (Gemma 4 + image upload)")
     p_ui.add_argument("--stream-dir", help="Vision: path to gemma4-stream split dir")
     p_ui.add_argument("--source-dir", help="Vision: path to gemma4-26b-4bit source dir")
+    p_ui.add_argument("--falcon", action="store_true",
+                      help="Vision: also load Falcon Perception for grounded segmentation")
+    p_ui.add_argument("--falcon-model", help="Vision: path to Falcon Perception model dir")
 
     args = parser.parse_args()
 

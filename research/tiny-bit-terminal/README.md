@@ -102,15 +102,46 @@ tiny bit: Here are today's highlights...
 The agent uses patterns from [PicoClaw](https://github.com/sipeed/picoclaw):
 
 - **Context Budget** — auto-trims conversation history before each LLM call (2.5 chars/token heuristic). Never overflows the context window.
-- **Tool Discovery** — core tools always visible, hidden tools (write_file, list_dir, screenshot, system_info) discoverable via `search_tools` meta-tool with auto-demotion TTL.
+- **Tool Discovery** — core tools always visible, hidden tools (write_file, list_dir, screenshot, system_info, **vision_describe, falcon_ground**) discoverable via `search_tools` meta-tool with auto-demotion TTL.
 - **Deterministic Tool Order** — tools sorted alphabetically for better KV cache hits in llama.cpp.
 - **Steering Queue** — user messages during tool execution are queued and injected at the next safe point.
 - **Parallel Tool Execution** — multiple tool calls in one response run concurrently with per-tool error recovery.
+
+## Vision Tools (NEW)
+
+The fast 1-bit text brain (Bonsai) can offload image questions to **mac-tensor**, our distributed Gemma 4 vision sniper running on Apple Silicon. Two new hidden tools:
+
+| Tool | Backend | What it does |
+|------|---------|-------------|
+| `vision_describe` | mac-tensor `/api/chat_vision` (Gemma 4-26B MoE) | "Look at this image and describe it" — returns natural language |
+| `falcon_ground` | mac-tensor `/api/falcon` (Falcon Perception 0.6B) | "Find every X in this image" — returns pixel-precise mask metadata (centroids, bbox, area) |
+
+**Architecture**: Bonsai 1-bit at ~10-30 tok/s does the reasoning. Gemma 4 vision (~4 tok/s, slow) only runs when an image needs to be described. Falcon (~1 sec) only runs when precise spatial info is needed.
+
+```
+You: "How many birds in ~/Desktop/photo.jpg and which is closest?"
+Bonsai: search_tools("vision") → discovers vision_describe + falcon_ground
+Bonsai: falcon_ground(image_path="~/Desktop/photo.jpg", query="bird")
+Falcon: returns {count: 4, masks: [{id:1, centroid:{x:0.3, y:0.5}, area:0.08, ...}, ...]}
+Bonsai: reasons over the JSON, finds the bottommost mask
+Bonsai: "There are 4 birds. The bottommost (mask #3, area 18%, center at (70%, 85%)) is closest to the camera."
+```
+
+**Configure backend**: set `MAC_TENSOR_URL` env var. Defaults to the public Scaleway endpoint.
+
+```bash
+# Use the public Scaleway demo (default)
+npx tsx src/index.tsx --server http://localhost:8203
+
+# Or your local M4 Mac Mini running mac-tensor ui --vision --falcon
+MAC_TENSOR_URL=http://192.168.1.244:8500 npx tsx src/index.tsx --server http://localhost:8203
+```
 
 ## Models
 
 | Model | Size | Speed (M2 Air) | Notes |
 |-------|------|----------------|-------|
+| **Bonsai-4B (1-bit, MLX)** | **~600 MB** | **30-50 tok/s** | **Tiny + fast, native MLX, [prism-ml/Bonsai-4B-mlx-1bit](https://huggingface.co/prism-ml/Bonsai-4B-mlx-1bit)** |
 | Bonsai-8B (1-bit) | 1.16 GB | 9-20 tok/s | Needs [PrismML fork](https://github.com/PrismML-Eng/llama.cpp) |
 | Qwen3-0.6B | 0.4 GB | 50+ tok/s | Ultra-fast, basic |
 | Qwen3-1.7B | 1.1 GB | 30+ tok/s | Lightweight |

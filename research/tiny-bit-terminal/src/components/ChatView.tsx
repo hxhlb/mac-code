@@ -33,7 +33,13 @@ const HIDDEN_TOOLS: ToolDef[] = [
   { name: "list_dir", hidden: true, description: "List files and folders in a directory with details", parameters: { type: "object", properties: { path: { type: "string", description: "Directory path (default: home)" } }, required: [] } },
   { name: "screenshot", hidden: true, description: "Capture a screenshot of the current screen", parameters: { type: "object", properties: {} } },
   { name: "system_info", hidden: true, description: "Get system information: CPU, RAM, disk, OS version", parameters: { type: "object", properties: {} } },
+  // Vision tools — call mac-tensor backend (Gemma 4 vision sniper + Falcon Perception)
+  { name: "vision_describe", hidden: true, description: "Look at an image and describe what's in it. Use for ANY question about an image's content, colors, text, scene, or composition. The vision model is slower than you, so only call once per image.", parameters: { type: "object", properties: { image_path: { type: "string", description: "Path to the image file (absolute or ~/...)" }, question: { type: "string", description: "What to ask about the image, e.g. 'describe this' or 'what colors do you see'" } }, required: ["image_path", "question"] } },
+  { name: "falcon_ground", hidden: true, description: "Find ALL instances of a specific object in an image with PIXEL-PRECISE coordinates. Returns JSON with mask IDs, centroids (x,y in 0-1), bbox, area_fraction, and image region. Use when the user asks 'how many', 'where exactly', 'which is biggest/closest', or needs counting/spatial reasoning.", parameters: { type: "object", properties: { image_path: { type: "string", description: "Path to the image file (absolute or ~/...)" }, query: { type: "string", description: "Object to find, e.g. 'bird', 'person', 'car'. Short and specific." } }, required: ["image_path", "query"] } },
 ];
+
+// Configurable mac-tensor backend URL for the vision tools
+const MAC_TENSOR_URL = process.env.MAC_TENSOR_URL || "http://62.210.166.98:8500";
 
 const TOOL_PROMOTE_TTL = 5; // turns before auto-demotion
 
@@ -1066,6 +1072,152 @@ for t in doc.tables:
             }
             setSpinnerMsg("");
             return content;
+          }
+
+          // ── vision_describe (mac-tensor /api/chat_vision) ──
+          if (toolName === "vision_describe") {
+            let imagePath = (toolArgs.image_path || "").replace(/^~/, process.env.HOME || "");
+            const question = toolArgs.question || "Describe this image.";
+            // Resolve relative paths via common dirs
+            if (!imagePath.startsWith("/")) {
+              const home = process.env.HOME || "";
+              for (const dir of ["Desktop", "Downloads", "Documents", "Pictures", ""]) {
+                const candidate = dir ? `${home}/${dir}/${imagePath}` : `${home}/${imagePath}`;
+                try { execSync(`test -f "${candidate}"`, { timeout: 1000 }); imagePath = candidate; break; } catch {}
+              }
+            }
+            setSpinnerMsg(`Vision: ${imagePath.split("/").pop()}`);
+            setEntries((prev) => [...prev, { role: "info", content: `◆ Vision (Gemma 4): ${imagePath.split("/").pop()} → "${question.slice(0, 60)}"` }]);
+            try {
+              const { readFileSync } = await import("node:fs");
+              const buf = readFileSync(imagePath);
+              const fd = new FormData();
+              fd.append("message", question);
+              fd.append("max_tokens", "200");
+              fd.append("image", new Blob([buf]), imagePath.split("/").pop() || "image.png");
+
+              const res = await fetch(`${MAC_TENSOR_URL}/api/chat_vision`, {
+                method: "POST",
+                body: fd,
+              });
+              if (!res.ok) throw new Error(`HTTP ${res.status}`);
+              if (!res.body) throw new Error("no response body");
+
+              // Parse SSE stream and accumulate the final answer
+              const reader = res.body.getReader();
+              const dec = new TextDecoder();
+              let buffer = "";
+              let finalText = "";
+              let tokens = "";
+              while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                buffer += dec.decode(value, { stream: true });
+                const lines = buffer.split("\n");
+                buffer = lines.pop() || "";
+                for (const line of lines) {
+                  if (!line.startsWith("data: ")) continue;
+                  try {
+                    const ev = JSON.parse(line.slice(6));
+                    if (ev.type === "token") tokens += ev.text;
+                    else if (ev.type === "final") finalText = ev.text;
+                  } catch {}
+                }
+              }
+              setSpinnerMsg("");
+              const answer = (finalText || tokens).trim() || "(no response)";
+              setEntries((prev) => [...prev, { role: "info", content: `◆ Vision result: ${answer.slice(0, 200)}${answer.length > 200 ? "..." : ""}` }]);
+              return answer.slice(0, 1500);
+            } catch (e: any) {
+              setSpinnerMsg("");
+              return `vision_describe failed: ${e.message}`;
+            }
+          }
+
+          // ── falcon_ground (mac-tensor /api/falcon) ──
+          if (toolName === "falcon_ground") {
+            let imagePath = (toolArgs.image_path || "").replace(/^~/, process.env.HOME || "");
+            const query = toolArgs.query || "";
+            if (!imagePath.startsWith("/")) {
+              const home = process.env.HOME || "";
+              for (const dir of ["Desktop", "Downloads", "Documents", "Pictures", ""]) {
+                const candidate = dir ? `${home}/${dir}/${imagePath}` : `${home}/${imagePath}`;
+                try { execSync(`test -f "${candidate}"`, { timeout: 1000 }); imagePath = candidate; break; } catch {}
+              }
+            }
+            setSpinnerMsg(`Falcon: ${query} in ${imagePath.split("/").pop()}`);
+            setEntries((prev) => [...prev, { role: "info", content: `◆ Falcon Perception: find "${query}" in ${imagePath.split("/").pop()}` }]);
+            try {
+              const { readFileSync, writeFileSync } = await import("node:fs");
+              const buf = readFileSync(imagePath);
+              const fd = new FormData();
+              fd.append("query", query);
+              fd.append("image", new Blob([buf]), imagePath.split("/").pop() || "image.png");
+
+              const res = await fetch(`${MAC_TENSOR_URL}/api/falcon`, {
+                method: "POST",
+                body: fd,
+              });
+              if (!res.ok) throw new Error(`HTTP ${res.status}`);
+              const data = await res.json();
+              setSpinnerMsg("");
+
+              // Save the annotated image to disk and open it in Preview
+              let savedPath = "";
+              if (data.annotated_image && typeof data.annotated_image === "string") {
+                const b64 = data.annotated_image.replace(/^data:image\/png;base64,/, "");
+                const ts = Date.now();
+                const safeQuery = query.replace(/[^a-zA-Z0-9]+/g, "_").slice(0, 32);
+                savedPath = `/tmp/falcon-${safeQuery}-${ts}.png`;
+                try {
+                  writeFileSync(savedPath, Buffer.from(b64, "base64"));
+                  // Open in Preview.app (macOS) — non-blocking
+                  execSync(`open "${savedPath}"`, { timeout: 3000 });
+                } catch {
+                  // ignore open failures
+                }
+              }
+
+              // Strip heavy base64 from the LLM payload but keep the path
+              const slim = {
+                query: data.query,
+                count: data.count,
+                mask_ids: data.mask_ids,
+                masks: data.masks,
+                elapsed_seconds: data.elapsed_seconds,
+                annotated_image_path: savedPath || null,
+              };
+
+              // Display result in the terminal — open icon + count + saved path
+              setEntries((prev) => [
+                ...prev,
+                {
+                  role: "info",
+                  content:
+                    `◆ Falcon found ${data.count} ${data.count === 1 ? "instance" : "instances"} of "${query}" in ${data.elapsed_seconds}s` +
+                    (savedPath ? `\n  🖼  Annotated image opened in Preview: ${savedPath}` : ""),
+                },
+              ]);
+
+              // Also list each mask's region briefly
+              if (data.masks && data.masks.length > 0) {
+                const maskLines = data.masks.slice(0, 6).map((m: any) => {
+                  const cx = (m.centroid_norm.x * 100).toFixed(0);
+                  const cy = (m.centroid_norm.y * 100).toFixed(0);
+                  const area = (m.area_fraction * 100).toFixed(1);
+                  return `  #${m.id} ${m.image_region} (${cx}%,${cy}%) area=${area}%`;
+                });
+                setEntries((prev) => [
+                  ...prev,
+                  { role: "info", content: maskLines.join("\n") },
+                ]);
+              }
+
+              return JSON.stringify(slim);
+            } catch (e: any) {
+              setSpinnerMsg("");
+              return `falcon_ground failed: ${e.message}`;
+            }
           }
 
           return `Unknown tool: ${toolName}. Use search_tools to find available tools.`;

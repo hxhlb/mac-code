@@ -721,6 +721,15 @@ Local commands (run on the Mac itself):
                       help="Vision: also load Falcon Perception for grounded segmentation")
     p_ui.add_argument("--falcon-model", help="Vision: path to Falcon Perception model dir")
 
+    # Bench (throughput benchmark)
+    p_bn = sub.add_parser("bench", help="Throughput benchmark — concurrent clients hitting a UI server")
+    p_bn.add_argument("--server", default="http://localhost:8500", help="UI server URL")
+    p_bn.add_argument("--concurrent", "-c", type=int, default=4, help="Concurrent clients")
+    p_bn.add_argument("--requests", "-r", type=int, default=3, help="Requests per client")
+    p_bn.add_argument("--max-tokens", type=int, default=80, help="Tokens per request")
+    p_bn.add_argument("--hourly-cost", type=float, default=0.40,
+                      help="Cluster $/hr for cost calc (default 0.40)")
+
     args = parser.parse_args()
 
     if args.command is None:
@@ -734,6 +743,10 @@ Local commands (run on the Mac itself):
     def cmd_ui(args):
         from .server import main as ui_main
         ui_main(args)
+
+    def cmd_bench(args):
+        from .bench import main as bench_main
+        bench_main(args)
 
     commands = {
         "init": cmd_init,
@@ -749,6 +762,7 @@ Local commands (run on the Mac itself):
         "health": lambda a: cmd_health_standalone(a),
         "agent": cmd_agent,
         "ui": cmd_ui,
+        "bench": cmd_bench,
     }
 
     commands[args.command](args)

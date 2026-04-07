@@ -720,6 +720,9 @@ Local commands (run on the Mac itself):
     p_ui.add_argument("--falcon", action="store_true",
                       help="Vision: also load Falcon Perception for grounded segmentation")
     p_ui.add_argument("--falcon-model", help="Vision: path to Falcon Perception model dir")
+    p_ui.add_argument("--falcon-only", action="store_true",
+                      help="Falcon-only mode: load Falcon Perception, skip Gemma. "
+                           "Used by the data labeling factory (~1.5 GB resident).")
 
     # Swarm: leader (peer registry + UI)
     p_ld = sub.add_parser("leader", help="Run as swarm leader (peer registry + chat UI)")

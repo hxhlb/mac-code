@@ -21,7 +21,8 @@ from queue import Queue, Empty
 def run_server(model_key, node_urls=None, host="0.0.0.0", port=8500, allow_write=False,
                vision=False, stream_dir=None, source_dir=None,
                falcon=False, falcon_model=None,
-               swarm_leader=False):
+               swarm_leader=False,
+               turbo_url=None):
     """Start the FastAPI server with the agent backend pre-loaded.
 
     Modes:
@@ -68,6 +69,16 @@ def run_server(model_key, node_urls=None, host="0.0.0.0", port=8500, allow_write
             print("Falcon Perception ready.")
 
         backend = None  # Not used in vision mode
+    elif falcon:
+        # Falcon-only mode: no Gemma, no distributed nodes. Used by the
+        # data labeling factory where we only need /api/falcon.
+        print("Loading Falcon Perception (standalone, no Gemma)...")
+        from .falcon_perception import FalconPerceptionTools
+        falcon_tools = FalconPerceptionTools.load(
+            model_path=falcon_model or "/Users/bigneek/models/falcon-perception"
+        )
+        print("Falcon Perception ready. (~1.5 GB resident, no Gemma loaded)")
+        backend = None
     else:
         print(f"Loading {model_key} distributed engine...")
         backend = AgentBackend(model_key=model_key, node_urls=node_urls)
@@ -86,6 +97,9 @@ def run_server(model_key, node_urls=None, host="0.0.0.0", port=8500, allow_write
     if vision:
         model_label = "Gemma 4-26B-A4B (Vision)"
         node_count_label = "single Mac · vision enabled"
+    elif falcon_tools is not None and vision_engine is None:
+        model_label = "Falcon Perception (labeling factory)"
+        node_count_label = "single Mac · Falcon-only"
     elif swarm_leader:
         model_label = {"gemma4": "Gemma 4-26B-A4B",
                        "qwen35": "Qwen 3.5-35B-A3B"}.get(model_key, model_key)
@@ -334,6 +348,149 @@ def run_server(model_key, node_urls=None, host="0.0.0.0", port=8500, allow_write
                      "Connection": "keep-alive"},
         )
 
+    @app.post("/api/turbo_chat")
+    async def turbo_chat(
+        message: str = Form(...),
+        max_tokens: int = Form(300),
+        image: UploadFile = File(None),
+    ):
+        """Turbo mode: Gemma 4 encodes image once, then a fast small LLM
+        (Qwen3-1.7B 4-bit via mlx-lm) handles the reasoning loop.
+
+        Streams SSE events compatible with the existing chat UI.
+        """
+        if vision_engine is None:
+            return JSONResponse({"error": "vision mode not enabled"}, status_code=400)
+        if not turbo_url:
+            return JSONResponse(
+                {"error": "turbo brain not configured (start server with --turbo-url)"},
+                status_code=400,
+            )
+
+        image_path = None
+        if image is not None and image.filename:
+            import tempfile
+            tmp = tempfile.NamedTemporaryFile(suffix="_" + image.filename, delete=False)
+            tmp.write(await image.read())
+            tmp.close()
+            image_path = tmp.name
+
+        def event_stream():
+            with lock:
+                try:
+                    # Step 1: Gemma 4 vision encodes the image ONCE
+                    yield f"data: {json.dumps({'type': 'step_start', 'step': 1, 'max': 2})}\n\n"
+                    yield f"data: {json.dumps({'type': 'token', 'text': '🔍 Encoding image with Gemma 4 vision...\\n'})}\n\n"
+
+                    description = ""
+                    if image_path:
+                        try:
+                            description = vision_engine.generate(
+                                "Describe this image briefly: what's in it, where is it, what colors and notable details. Be concise (3-4 sentences max).",
+                                image_path=image_path,
+                                max_tokens=150,
+                                temperature=0.5,
+                            ).strip()
+                            yield f"data: {json.dumps({'type': 'tool_call', 'tool': 'vision_describe', 'args': 'image'})}\n\n"
+                            yield f"data: {json.dumps({'type': 'tool_result', 'result': description})}\n\n"
+                        except Exception as e:
+                            yield f"data: {json.dumps({'type': 'error', 'message': f'vision encode failed: {e}'})}\n\n"
+                            return
+
+                    # Step 2: fast turbo brain reasons over the description
+                    yield f"data: {json.dumps({'type': 'step_start', 'step': 2, 'max': 2})}\n\n"
+
+                    # Build the prompt for the turbo brain
+                    if description:
+                        system_msg = (
+                            "You are a fast assistant that answers questions about images. "
+                            "A vision model has already described the image for you. "
+                            "Give a SHORT, direct answer (1-3 sentences). Do not show your reasoning."
+                        )
+                        user_msg = (
+                            f"Image description: {description}\n\n"
+                            f"User's question: {message}"
+                        )
+                    else:
+                        system_msg = "You are a fast helpful assistant. Give SHORT, direct answers."
+                        user_msg = message
+
+                    # Stream from the turbo brain (mlx-lm OpenAI-compatible endpoint)
+                    import urllib.request
+                    payload = {
+                        "model": "qwen3-1.7b",
+                        "messages": [
+                            {"role": "system", "content": system_msg},
+                            {"role": "user", "content": user_msg},
+                        ],
+                        "max_tokens": max_tokens,
+                        "temperature": 0.5,
+                        "stream": True,
+                    }
+                    req = urllib.request.Request(
+                        f"{turbo_url}/v1/chat/completions",
+                        data=json.dumps(payload).encode(),
+                        headers={"Content-Type": "application/json"},
+                    )
+                    final_text = ""
+                    in_think = False
+                    try:
+                        with urllib.request.urlopen(req, timeout=120) as resp:
+                            buffer = ""
+                            for chunk in iter(lambda: resp.read(512), b""):
+                                buffer += chunk.decode("utf-8", errors="ignore")
+                                while "\n" in buffer:
+                                    line, buffer = buffer.split("\n", 1)
+                                    line = line.strip()
+                                    if not line.startswith("data: "):
+                                        continue
+                                    data = line[6:]
+                                    if data == "[DONE]":
+                                        break
+                                    try:
+                                        ev = json.loads(data)
+                                        delta = ev.get("choices", [{}])[0].get("delta", {})
+                                        text = delta.get("content", "")
+                                        if not text:
+                                            continue
+                                        # Strip out <think>...</think> reasoning blocks
+                                        for ch in text:
+                                            if "<think>" in (final_text + ch)[-7:]:
+                                                in_think = True
+                                                continue
+                                            if "</think>" in (final_text + ch)[-8:]:
+                                                in_think = False
+                                                final_text = ""
+                                                continue
+                                            if not in_think:
+                                                final_text += ch
+                                                yield f"data: {json.dumps({'type': 'token', 'text': ch})}\n\n"
+                                    except Exception:
+                                        continue
+                    except Exception as e:
+                        yield f"data: {json.dumps({'type': 'error', 'message': f'turbo brain failed: {e}'})}\n\n"
+                        return
+
+                    yield f"data: {json.dumps({'type': 'final', 'text': final_text.strip()})}\n\n"
+                    yield f"data: {json.dumps({'type': 'done'})}\n\n"
+                except Exception as e:
+                    import traceback
+                    traceback.print_exc()
+                    yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+                finally:
+                    if image_path and os.path.exists(image_path):
+                        try:
+                            os.unlink(image_path)
+                        except Exception:
+                            pass
+
+        return StreamingResponse(
+            event_stream(),
+            media_type="text/event-stream",
+            headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no",
+                     "Connection": "keep-alive"},
+        )
+
     @app.post("/api/falcon")
     async def falcon_ground(
         query: str = Form(...),
@@ -418,6 +575,22 @@ def _local_ip():
 
 def main(args):
     vision = getattr(args, "vision", False)
+    falcon_only = getattr(args, "falcon_only", False)
+
+    if falcon_only:
+        # Falcon-only mode: load Falcon Perception, skip Gemma entirely.
+        # ~1.5 GB resident. Used by the data labeling factory.
+        run_server(
+            model_key="falcon",
+            node_urls=None,
+            host=args.host or "0.0.0.0",
+            port=args.port or 8500,
+            allow_write=False,
+            vision=False,
+            falcon=True,
+            falcon_model=getattr(args, "falcon_model", None),
+        )
+        return
 
     if vision:
         # Vision mode: single-machine, no distributed nodes needed

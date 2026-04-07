@@ -519,6 +519,7 @@ def _patch_vision_engine_prefill():
         return
 
     def _prefill_logits(self, input_token_ids, image_features):
+        import numpy as np
         from mlx_lm.models.base import create_attention_mask
         from mlx_vlm.models.gemma4.gemma4 import masked_scatter
         from moe_agent_gemma4 import run_expert_ffn
